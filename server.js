@@ -9,8 +9,14 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false
+}));
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Constants
 const SALT = 'x7q2m9k1p8n5v3c6x4z9';
@@ -130,7 +136,33 @@ function resetAttempts() {
 
 // Health check
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', message: 'Server is running' });
+    res.json({ 
+        status: 'OK', 
+        message: 'Server is running',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// Diagnostic endpoint
+app.get('/api/diagnostic', (req, res) => {
+    try {
+        const db = readDatabase();
+        res.json({
+            status: 'OK',
+            server: 'Running',
+            database: 'Connected',
+            adminLocked: isAdminLocked(),
+            attemptsUsed: db.attempts,
+            maxAttempts: MAX_ATTEMPTS,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'ERROR',
+            message: error.message
+        });
+    }
 });
 
 // Admin login endpoint
@@ -314,14 +346,23 @@ app.get('/api/admin/status', (req, res) => {
 initDatabase();
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Crash Analyzer Backend Server running on port ${PORT}`);
     console.log(`📊 Admin authentication enabled`);
     console.log(`🔐 5-attempt lockout system active`);
+    console.log(`✅ Server ready to accept requests`);
+});
+
+server.on('error', (err) => {
+    console.error('Server error:', err);
+    process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('Server shutting down...');
-    process.exit(0);
+    server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+    });
 });
