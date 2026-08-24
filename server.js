@@ -71,7 +71,6 @@ app.get('/api/diagnostic', (req, res) => {
             status: 'OK',
             server: 'Running',
             database: 'Connected',
-            lockoutSystem: 'DISABLED',
             timestamp: new Date().toISOString()
         });
     } catch (error) {
@@ -82,7 +81,7 @@ app.get('/api/diagnostic', (req, res) => {
     }
 });
 
-// Admin login endpoint - NO LOCKOUT SYSTEM
+// Admin login endpoint
 app.post('/api/admin/login', (req, res) => {
     try {
         const { password } = req.body;
@@ -99,7 +98,7 @@ app.post('/api/admin/login', (req, res) => {
 
         // Verify password
         if (passwordHash !== ADMIN_PASSWORD_HASH) {
-            // Wrong password - no lockout, just message
+            // Wrong password
             const db = readDatabase();
             db.loginHistory.push({
                 timestamp: new Date().toISOString(),
@@ -139,7 +138,7 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// Change password endpoint - NO LOCKOUT SYSTEM
+// Change password endpoint
 app.post('/api/admin/change-password', (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -161,7 +160,7 @@ app.post('/api/admin/change-password', (req, res) => {
         const currentHash = hashPasswordSync(currentPassword);
 
         if (currentHash !== ADMIN_PASSWORD_HASH) {
-            // Wrong password - no lockout
+            // Wrong password
             const db = readDatabase();
             db.loginHistory.push({
                 timestamp: new Date().toISOString(),
@@ -212,9 +211,8 @@ app.get('/api/admin/status', (req, res) => {
         const db = readDatabase();
 
         return res.json({
-            locked: false,
-            lockoutSystem: 'DISABLED',
-            message: 'No lockout system - unlimited login attempts allowed',
+            status: 'OK',
+            message: 'Server is running',
             timestamp: new Date().toISOString()
         });
 
@@ -233,7 +231,6 @@ const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Crash Analyzer Backend Server running on port ${PORT}`);
     console.log(`📊 Admin authentication enabled`);
-    console.log(`✅ Lockout system: DISABLED`);
     console.log(`✅ Server ready to accept requests`);
 });
 
@@ -248,4 +245,4 @@ process.on('SIGTERM', () => {
         console.log('Server closed');
         process.exit(0);
     });
-});  
+});
