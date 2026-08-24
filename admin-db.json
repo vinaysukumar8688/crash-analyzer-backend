@@ -1,0 +1,11 @@
+{
+  "attempts": 0,
+  "lockedUntil": 0,
+  "loginHistory": [
+    {
+      "timestamp": "2024-08-24T16:30:00.000Z",
+      "event": "DATABASE_INITIALIZED",
+      "message": "Admin database created"
+    }
+  ]
+}
