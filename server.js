@@ -18,6 +18,20 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Online users tracking
+const onlineUsers = new Map();
+const ONLINE_TIMEOUT = 30000; // 30 seconds
+
+// Clean up offline users
+setInterval(() => {
+    const now = Date.now();
+    for (let [userId, timestamp] of onlineUsers.entries()) {
+        if (now - timestamp > ONLINE_TIMEOUT) {
+            onlineUsers.delete(userId);
+        }
+    }
+}, 10000);
+
 // Constants
 const SALT = 'x7q2m9k1p8n5v3c6x4z9';
 const DB_FILE = path.join(__dirname, 'admin-db.json');
@@ -214,6 +228,83 @@ app.get('/api/admin/status', (req, res) => {
             status: 'OK',
             message: 'Server is running',
             timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// User online endpoint - register/update user as online
+app.post('/api/user/online', (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID required'
+            });
+        }
+
+        // Register user as online with current timestamp
+        onlineUsers.set(userId, Date.now());
+
+        return res.json({
+            success: true,
+            onlineCount: onlineUsers.size,
+            message: 'User registered as online'
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// Get online users count
+app.get('/api/user/online-count', (req, res) => {
+    try {
+        // Clean up old entries
+        const now = Date.now();
+        for (let [userId, timestamp] of onlineUsers.entries()) {
+            if (now - timestamp > ONLINE_TIMEOUT) {
+                onlineUsers.delete(userId);
+            }
+        }
+
+        return res.json({
+            success: true,
+            onlineCount: onlineUsers.size,
+            message: 'Online count retrieved'
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// User logout endpoint - remove user from online
+app.post('/api/user/logout', (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        if (userId) {
+            onlineUsers.delete(userId);
+        }
+
+        return res.json({
+            success: true,
+            onlineCount: onlineUsers.size,
+            message: 'User logged out'
         });
 
     } catch (error) {
