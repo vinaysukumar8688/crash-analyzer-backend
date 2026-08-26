@@ -33,7 +33,7 @@ app.post('/api/admin/login', async (req, res) => {
         const hash = crypto.createHash('sha256').update(password).digest('hex');
         
         // Check against stored hash
-        const ADMIN_HASH = 'f2cac0b4c2388b5457f46f71c7bb22d6d094629d7e1ad57283ee43d8e9bfeec6';
+        const ADMIN_HASH = process.env.ADMIN_PASSWORD_HASH;
         
         if (hash === ADMIN_HASH) {
             return res.json({ success: true });
