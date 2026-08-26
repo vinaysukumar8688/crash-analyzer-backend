@@ -267,7 +267,148 @@ app.get('/api/stats/active-users', (req, res) => {
         return res.json({ activeUsers: 0 });
     }
 });
+  // ========================================
+// GET ALL KEYS ENDPOINT (ADMIN)
+// ========================================
+app.get('/api/admin/get-all-keys', async (req, res) => {
+    try {
+        console.log('📋 Getting all keys...');
+        
+        const result = await pool.query(
+            'SELECT id, key_string, exp, active, created_at FROM keys ORDER BY created_at DESC'
+        );
 
+        console.log('✅ Found', result.rows.length, 'keys');
+        
+        return res.json({
+            success: true,
+            keys: result.rows
+        });
+
+    } catch (error) {
+        console.error('❌ Get all keys error:', error);
+        return res.status(500).json({
+            success: false,
+            reason: 'Server error'
+        });
+    }
+});
+
+// ========================================
+// RESET KEY ENDPOINT (ADMIN)
+// ========================================
+app.post('/api/admin/reset-key', async (req, res) => {
+    try {
+        const { keyId, keyString, newExpiry } = req.body;
+        
+        console.log('🔄 Reset key request:', keyId);
+        console.log('New expiry:', newExpiry);
+
+        if (!keyId || !newExpiry) {
+            return res.json({
+                success: false,
+                reason: 'Missing keyId or newExpiry'
+            });
+        }
+
+        // Update key expiry in database
+        const result = await pool.query(
+            'UPDATE keys SET exp = $1 WHERE id = $2 RETURNING id, key_string, exp',
+            [newExpiry, keyId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.json({
+                success: false,
+                reason: 'Key not found'
+            });
+        }
+
+        // Clear session for this key (remove device lock)
+        Object.keys(activeSessions).forEach(sid => {
+            if (activeSessions[sid].key === keyString) {
+                delete activeSessions[sid];
+                console.log('🗑️ Cleared session for key:', keyString);
+            }
+        });
+
+        console.log('✅ Key reset successfully!');
+        
+        return res.json({
+            success: true,
+            message: 'Key extended successfully',
+            key: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Reset key error:', error);
+        return res.status(500).json({
+            success: false,
+            reason: 'Server error: ' + error.message
+        });
+    }
+});
+
+// ========================================
+// DELETE KEY ENDPOINT (ADMIN)
+// ========================================
+app.post('/api/admin/delete-key', async (req, res) => {
+    try {
+        const { keyId } = req.body;
+        
+        console.log('🗑️ Delete key request:', keyId);
+
+        if (!keyId) {
+            return res.json({
+                success: false,
+                reason: 'Missing keyId'
+            });
+        }
+
+        // Get key string before deleting
+        const getResult = await pool.query(
+            'SELECT key_string FROM keys WHERE id = $1',
+            [keyId]
+        );
+
+        if (getResult.rows.length === 0) {
+            return res.json({
+                success: false,
+                reason: 'Key not found'
+            });
+        }
+
+        const keyString = getResult.rows[0].key_string;
+
+        // Delete from database
+        await pool.query(
+            'DELETE FROM keys WHERE id = $1',
+            [keyId]
+        );
+
+        // Clear session for this key
+        Object.keys(activeSessions).forEach(sid => {
+            if (activeSessions[sid].key === keyString) {
+                delete activeSessions[sid];
+                console.log('🗑️ Cleared session for deleted key');
+            }
+        });
+
+        console.log('✅ Key deleted successfully!');
+        
+        return res.json({
+            success: true,
+            message: 'Key deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('❌ Delete key error:', error);
+        return res.status(500).json({
+            success: false,
+            reason: 'Server error: ' + error.message
+        });
+    }
+});
 // ========================================
 // HEALTH CHECK
 // ========================================
