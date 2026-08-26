@@ -1,339 +1,289 @@
+// ========================================
+// CRASH ANALYZER SECURE SERVER
+// Deploy this to Railway
+// ========================================
+
 const express = require('express');
+const { Pool } = require('pg');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
+app.use(express.json());
+app.use(cors());
 
-// Middleware
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false
-}));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// ========================================
+// DATABASE CONNECTION
+// ========================================
 
-// Online users tracking
-const onlineUsers = new Map();
-const ONLINE_TIMEOUT = 30000; // 30 seconds
-
-// Clean up offline users
-setInterval(() => {
-    const now = Date.now();
-    for (let [userId, timestamp] of onlineUsers.entries()) {
-        if (now - timestamp > ONLINE_TIMEOUT) {
-            onlineUsers.delete(userId);
-        }
-    }
-}, 10000);
-
-// Constants
-const SALT = 'x7q2m9k1p8n5v3c6x4z9';
-const DB_FILE = path.join(__dirname, 'admin-db.json');
-
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 'f2cac0b4c2388b5457f46f71c7bb22d6d094629d7e1ad57283ee43d8e9bfeec6';
-
-function initDatabase() {
-    if (!fs.existsSync(DB_FILE)) {
-        const initialData = {
-            loginHistory: []
-        };
-        fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2));
-    }
-}
-
-function readDatabase() {
-    try {
-        const data = fs.readFileSync(DB_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (e) {
-        return { loginHistory: [] };
-    }
-}
-
-function writeDatabase(data) {
-    try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-    } catch (e) {
-        console.error('Error writing database:', e);
-    }
-}
-
-function hashPasswordSync(password) {
-    return crypto.createHash('sha256').update(password + SALT).digest('hex');
-}
-
-// Health check
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        message: 'Server is running',
-        timestamp: new Date().toISOString()
-    });
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL
 });
 
-// Diagnostic endpoint
-app.get('/api/diagnostic', (req, res) => {
-    try {
-        const db = readDatabase();
-        res.json({
-            status: 'OK',
-            server: 'Running',
-            database: 'Connected',
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'ERROR',
-            message: error.message
-        });
-    }
+pool.on('error', (err) => {
+    console.error('Database error:', err);
 });
 
-// Admin login endpoint
-app.post('/api/admin/login', (req, res) => {
+// ========================================
+// API 1: VALIDATE USER KEY
+// ========================================
+
+app.post('/api/user/validate-key', async (req, res) => {
     try {
-        const { password } = req.body;
+        const { key, pin, device } = req.body;
 
-        if (!password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Password required'
+        if (!key || !pin || !device) {
+            return res.json({
+                valid: false,
+                reason: 'Missing key, pin, or device'
             });
         }
 
-        // Hash password
-        const passwordHash = hashPasswordSync(password);
+        const result = await pool.query(
+            'SELECT * FROM keys WHERE key_string = $1 AND active = true',
+            [key]
+        );
 
-        // Verify password
-        if (passwordHash !== ADMIN_PASSWORD_HASH) {
-            // Wrong password
-            const db = readDatabase();
-            db.loginHistory.push({
-                timestamp: new Date().toISOString(),
-                event: 'FAILED_LOGIN',
-                message: 'Invalid password attempt'
-            });
-            writeDatabase(db);
-            
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid password'
+        if (result.rows.length === 0) {
+            return res.json({
+                valid: false,
+                reason: 'Key not found or disabled'
             });
         }
 
-        // Correct password
-        const db = readDatabase();
-        db.loginHistory.push({
-            timestamp: new Date().toISOString(),
-            event: 'SUCCESSFUL_LOGIN',
-            message: 'Admin logged in successfully'
-        });
-        writeDatabase(db);
-        
-        return res.json({
-            success: true,
-            message: 'Login successful',
-            token: 'admin-session-' + Date.now()
-        });
-
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error',
-            error: error.message
-        });
-    }
-});
-
-// Change password endpoint
-app.post('/api/admin/change-password', (req, res) => {
-    try {
-        const { currentPassword, newPassword } = req.body;
-
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({
-                success: false,
-                message: 'Current and new password required'
-            });
-        }
-
-        if (newPassword.length < 8) {
-            return res.status(400).json({
-                success: false,
-                message: 'New password must be at least 8 characters'
-            });
-        }
-
-        const currentHash = hashPasswordSync(currentPassword);
-
-        if (currentHash !== ADMIN_PASSWORD_HASH) {
-            // Wrong password
-            const db = readDatabase();
-            db.loginHistory.push({
-                timestamp: new Date().toISOString(),
-                event: 'FAILED_PASSWORD_CHANGE_ATTEMPT',
-                message: 'Invalid current password'
-            });
-            writeDatabase(db);
-            
-            return res.status(401).json({
-                success: false,
-                message: 'Current password is incorrect'
-            });
-        }
-
-        // Current password correct
-        const db = readDatabase();
-        db.loginHistory.push({
-            timestamp: new Date().toISOString(),
-            event: 'PASSWORD_CHANGE_VERIFIED',
-            message: 'Current password verified for change'
-        });
-        writeDatabase(db);
-
-        const newHash = hashPasswordSync(newPassword);
-
-        return res.json({
-            success: true,
-            message: 'Current password verified',
-            newHash: newHash,
-            instruction: 'Update ADMIN_PASSWORD_HASH in server with this value',
-            newHashValue: newHash,
-            updateEnv: `ADMIN_PASSWORD_HASH=${newHash}`
-        });
-
-    } catch (error) {
-        console.error('Change password error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error',
-            error: error.message
-        });
-    }
-});
-
-// Get admin status
-app.get('/api/admin/status', (req, res) => {
-    try {
-        const db = readDatabase();
-
-        return res.json({
-            status: 'OK',
-            message: 'Server is running',
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-
-// User online endpoint - register/update user as online
-app.post('/api/user/online', (req, res) => {
-    try {
-        const { userId } = req.body;
-
-        if (!userId) {
-            return res.status(400).json({
-                success: false,
-                message: 'User ID required'
-            });
-        }
-
-        // Register user as online with current timestamp
-        onlineUsers.set(userId, Date.now());
-
-        return res.json({
-            success: true,
-            onlineCount: onlineUsers.size,
-            message: 'User registered as online'
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-
-// Get online users count
-app.get('/api/user/online-count', (req, res) => {
-    try {
-        // Clean up old entries
+        const dbKey = result.rows[0];
         const now = Date.now();
-        for (let [userId, timestamp] of onlineUsers.entries()) {
-            if (now - timestamp > ONLINE_TIMEOUT) {
-                onlineUsers.delete(userId);
-            }
+
+        if (dbKey.pin !== pin) {
+            return res.json({
+                valid: false,
+                reason: 'Wrong PIN'
+            });
+        }
+
+        if (dbKey.device !== device) {
+            return res.json({
+                valid: false,
+                reason: 'Wrong device ID'
+            });
+        }
+
+        if (now > dbKey.exp) {
+            return res.json({
+                valid: false,
+                reason: 'Key expired'
+            });
+        }
+
+        if (!dbKey.active) {
+            return res.json({
+                valid: false,
+                reason: 'Key disabled'
+            });
         }
 
         return res.json({
-            success: true,
-            onlineCount: onlineUsers.size,
-            message: 'Online count retrieved'
+            valid: true,
+            reason: 'Key is valid',
+            expiresAt: dbKey.exp
         });
 
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
+        console.error('Validate key error:', error);
+        return res.status(500).json({
+            valid: false,
+            reason: 'Server error'
         });
     }
 });
 
-// User logout endpoint - remove user from online
-app.post('/api/user/logout', (req, res) => {
+// ========================================
+// API 2: SAVE KEY (ADMIN)
+// ========================================
+
+app.post('/api/admin/save-key', async (req, res) => {
     try {
-        const { userId } = req.body;
+        const { key, pin, device, exp, adminToken } = req.body;
 
-        if (userId) {
-            onlineUsers.delete(userId);
+        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
+        if (adminToken !== SECRET) {
+            return res.status(401).json({
+                success: false,
+                reason: 'Unauthorized'
+            });
         }
+
+        if (!key || !pin || !device || !exp) {
+            return res.json({
+                success: false,
+                reason: 'Missing required fields'
+            });
+        }
+
+        const result = await pool.query(
+            'INSERT INTO keys (key_string, pin, device, exp, active) VALUES ($1, $2, $3, $4, true) RETURNING id',
+            [key, pin, device, exp]
+        );
 
         return res.json({
             success: true,
-            onlineCount: onlineUsers.size,
-            message: 'User logged out'
+            reason: 'Key saved to database',
+            id: result.rows[0].id
         });
 
     } catch (error) {
-        res.status(500).json({
+        console.error('Save key error:', error);
+        
+        if (error.code === '23505') {
+            return res.json({
+                success: false,
+                reason: 'Key already exists'
+            });
+        }
+
+        return res.status(500).json({
             success: false,
-            message: 'Server error'
+            reason: 'Server error'
         });
     }
 });
 
-// Start server
-initDatabase();
-const PORT = process.env.PORT || 3000;
+// ========================================
+// API 3: DELETE KEY (ADMIN)
+// ========================================
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Crash Analyzer Backend Server running on port ${PORT}`);
-    console.log(`📊 Admin authentication enabled`);
-    console.log(`✅ Server ready to accept requests`);
+app.post('/api/admin/delete-key', async (req, res) => {
+    try {
+        const { key, adminToken } = req.body;
+
+        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
+        if (adminToken !== SECRET) {
+            return res.status(401).json({
+                success: false,
+                reason: 'Unauthorized'
+            });
+        }
+
+        const result = await pool.query(
+            'DELETE FROM keys WHERE key_string = $1',
+            [key]
+        );
+
+        if (result.rowCount === 0) {
+            return res.json({
+                success: false,
+                reason: 'Key not found'
+            });
+        }
+
+        return res.json({
+            success: true,
+            reason: 'Key deleted'
+        });
+
+    } catch (error) {
+        console.error('Delete key error:', error);
+        return res.status(500).json({
+            success: false,
+            reason: 'Server error'
+        });
+    }
 });
 
-server.on('error', (err) => {
-    console.error('Server error:', err);
-    process.exit(1);
+// ========================================
+// API 4: DISABLE KEY (ADMIN)
+// ========================================
+
+app.post('/api/admin/disable-key', async (req, res) => {
+    try {
+        const { key, adminToken } = req.body;
+
+        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
+        if (adminToken !== SECRET) {
+            return res.status(401).json({
+                success: false,
+                reason: 'Unauthorized'
+            });
+        }
+
+        const result = await pool.query(
+            'UPDATE keys SET active = false WHERE key_string = $1',
+            [key]
+        );
+
+        if (result.rowCount === 0) {
+            return res.json({
+                success: false,
+                reason: 'Key not found'
+            });
+        }
+
+        return res.json({
+            success: true,
+            reason: 'Key disabled'
+        });
+
+    } catch (error) {
+        console.error('Disable key error:', error);
+        return res.status(500).json({
+            success: false,
+            reason: 'Server error'
+        });
+    }
+});
+
+// ========================================
+// API 5: GET ALL KEYS (ADMIN)
+// ========================================
+
+app.post('/api/admin/get-keys', async (req, res) => {
+    try {
+        const { adminToken } = req.body;
+
+        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
+        if (adminToken !== SECRET) {
+            return res.status(401).json({
+                success: false,
+                reason: 'Unauthorized'
+            });
+        }
+
+        const result = await pool.query(
+            'SELECT id, key_string, device, exp, active, created_at FROM keys ORDER BY created_at DESC'
+        );
+
+        return res.json({
+            success: true,
+            keys: result.rows
+        });
+
+    } catch (error) {
+        console.error('Get keys error:', error);
+        return res.status(500).json({
+            success: false,
+            reason: 'Server error'
+        });
+    }
+});
+
+// ========================================
+// HEALTH CHECK
+// ========================================
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', service: 'Crash Analyzer API' });
+});
+
+// ========================================
+// START SERVER
+// ========================================
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 Crash Analyzer API running on port ${PORT}`);
 });
 
 process.on('SIGTERM', () => {
-    console.log('Server shutting down...');
-    server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
-    });
+    pool.end();
+    process.exit(0);
 });
