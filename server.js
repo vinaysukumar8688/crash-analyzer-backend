@@ -43,7 +43,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // ========================================
-// VALIDATE KEY (SIMPLIFIED - KEY ONLY)
+// VALIDATE KEY (SIMPLE - KEY ONLY!)
 // ========================================
 app.post('/api/user/validate-key', async (req, res) => {
     try {
@@ -78,17 +78,9 @@ app.post('/api/user/validate-key', async (req, res) => {
             });
         }
 
-        if (!dbKey.active) {
-            return res.json({
-                valid: false,
-                reason: 'Key disabled'
-            });
-        }
-
         return res.json({
             valid: true,
-            reason: 'Key is valid',
-            expiresAt: dbKey.exp
+            reason: 'Key is valid'
         });
 
     } catch (error) {
@@ -105,23 +97,22 @@ app.post('/api/user/validate-key', async (req, res) => {
 // ========================================
 app.post('/api/admin/save-key', async (req, res) => {
     try {
-        const { key, pin, device, exp } = req.body;
+        const { key, exp } = req.body;
 
-        if (!key || !pin || !device || !exp) {
+        if (!key || !exp) {
             return res.json({
                 success: false,
-                reason: 'Missing required fields'
+                reason: 'Missing key or expiry'
             });
         }
 
         const result = await pool.query(
-            'INSERT INTO keys (key_string, pin, device, exp, active) VALUES ($1, $2, $3, $4, true) RETURNING id',
-            [key, pin, device, exp]
+            'INSERT INTO keys (key_string, exp, active) VALUES ($1, $2, true) RETURNING id',
+            [key, exp]
         );
 
         return res.json({
             success: true,
-            reason: 'Key saved to database',
             id: result.rows[0].id
         });
 
@@ -162,8 +153,7 @@ app.post('/api/admin/delete-key', async (req, res) => {
         }
 
         return res.json({
-            success: true,
-            reason: 'Key deleted'
+            success: true
         });
 
     } catch (error) {
@@ -195,8 +185,7 @@ app.post('/api/admin/disable-key', async (req, res) => {
         }
 
         return res.json({
-            success: true,
-            reason: 'Key disabled'
+            success: true
         });
 
     } catch (error) {
@@ -214,7 +203,7 @@ app.post('/api/admin/disable-key', async (req, res) => {
 app.post('/api/admin/get-keys', async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT id, key_string, device, exp, active, created_at FROM keys ORDER BY created_at DESC'
+            'SELECT id, key_string, exp, active, created_at FROM keys ORDER BY created_at DESC'
         );
 
         return res.json({
@@ -232,32 +221,10 @@ app.post('/api/admin/get-keys', async (req, res) => {
 });
 
 // ========================================
-// ONLINE REGISTRATION
-// ========================================
-app.post('/api/user/online', async (req, res) => {
-    try {
-        res.json({ success: true });
-    } catch (error) {
-        res.json({ success: false });
-    }
-});
-
-// ========================================
-// ONLINE COUNT
-// ========================================
-app.post('/api/user/online-count', async (req, res) => {
-    try {
-        res.json({ count: 1 });
-    } catch (error) {
-        res.json({ count: 0 });
-    }
-});
-
-// ========================================
 // HEALTH CHECK
 // ========================================
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', service: 'Crash Analyzer API' });
+    res.json({ status: 'OK' });
 });
 
 // ========================================
