@@ -157,18 +157,21 @@ app.post('/api/user/validate-key', async (req, res) => {
             });
         }
 
-        // Add session tracking
-        const sessionId = 'session_' + Math.random().toString(36).substring(7);
-        
-        // Remove any old sessions for this same key (prevent duplicates)
-        Object.keys(activeSessions).forEach(sid => {
-            if (activeSessions[sid].key === key) {
-                delete activeSessions[sid];
-                console.log('🗑️ Removed old session for key:', key);
-            }
+        // CHECK IF KEY IS ALREADY IN USE ON ANOTHER DEVICE
+        const keyInUse = Object.keys(activeSessions).some(sid => {
+            return activeSessions[sid].key === key;
         });
         
-        // Add new session
+        if (keyInUse) {
+            console.log('❌ Key already in use on another device');
+            return res.json({
+                valid: false,
+                reason: 'Key already in use on another device'
+            });
+        }
+
+        // Add session tracking
+        const sessionId = 'session_' + Math.random().toString(36).substring(7);
         activeSessions[sessionId] = { key, timestamp: Date.now() };
         console.log('✅ New session created:', sessionId);
         console.log('📊 Current active sessions:', Object.keys(activeSessions).length);
@@ -199,75 +202,6 @@ app.post('/api/user/validate-key', async (req, res) => {
 });
 
 // ========================================
-// USER HEARTBEAT ENDPOINT
-// ========================================
-app.post('/api/user/heartbeat', (req, res) => {
-    try {
-        const { sessionId } = req.body;
-        
-        if (sessionId && activeSessions[sessionId]) {
-            activeSessions[sessionId].timestamp = Date.now();
-        }
-        
-        res.json({ success: true });
-    } catch (error) {
-        res.json({ success: false });
-    }
-});
-
-// ========================================
-// USER LOGOUT ENDPOINT
-// ========================================
-app.post('/api/user/logout', (req, res) => {
-    try {
-        const { sessionId } = req.body;
-        
-        console.log('🚪 Logout request received:', sessionId);
-        
-        if (sessionId && activeSessions[sessionId]) {
-            delete activeSessions[sessionId];
-            console.log('✅ Session removed:', sessionId);
-            console.log('📊 Active sessions now:', Object.keys(activeSessions).length);
-            return res.json({ success: true });
-        } else {
-            console.log('⚠️ Session not found:', sessionId);
-            return res.json({ success: false, reason: 'Session not found' });
-        }
-    } catch (error) {
-        console.error('❌ Logout error:', error);
-        res.json({ success: false, error: error.message });
-    }
-});
-
-// ========================================
-// GET ACTIVE USERS
-// ========================================
-app.get('/api/stats/active-users', (req, res) => {
-    try {
-        const now = Date.now();
-        let activeCount = 0;
-        const activeSids = [];
-        
-        // Count sessions with heartbeat in last 1 minute (only active users)
-        Object.keys(activeSessions).forEach(sid => {
-            if (now - activeSessions[sid].timestamp < 1 * 60 * 1000) {
-                activeCount++;
-                activeSids.push(sid);
-            }
-        });
-
-        console.log('📊 Active sessions:', activeCount, activeSids);
-        
-        return res.json({
-            activeUsers: activeCount || 0,
-            timestamp: now
-        });
-    } catch (error) {
-        console.error('❌ Get active users error:', error);
-        return res.json({ activeUsers: 0 });
-    }
-});
-  // ========================================
 // GET ALL KEYS ENDPOINT (ADMIN)
 // ========================================
 app.get('/api/admin/get-all-keys', async (req, res) => {
@@ -409,6 +343,77 @@ app.post('/api/admin/delete-key', async (req, res) => {
         });
     }
 });
+
+// ========================================
+// GET ACTIVE USERS
+// ========================================
+app.get('/api/stats/active-users', (req, res) => {
+    try {
+        const now = Date.now();
+        let activeCount = 0;
+        const activeSids = [];
+        
+        // Count sessions with heartbeat in last 1 minute (only active users)
+        Object.keys(activeSessions).forEach(sid => {
+            if (now - activeSessions[sid].timestamp < 1 * 60 * 1000) {
+                activeCount++;
+                activeSids.push(sid);
+            }
+        });
+
+        console.log('📊 Active sessions:', activeCount, activeSids);
+        
+        return res.json({
+            activeUsers: activeCount || 0,
+            timestamp: now
+        });
+    } catch (error) {
+        console.error('❌ Get active users error:', error);
+        return res.json({ activeUsers: 0 });
+    }
+});
+
+// ========================================
+// USER HEARTBEAT ENDPOINT
+// ========================================
+app.post('/api/user/heartbeat', (req, res) => {
+    try {
+        const { sessionId } = req.body;
+        
+        if (sessionId && activeSessions[sessionId]) {
+            activeSessions[sessionId].timestamp = Date.now();
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.json({ success: false });
+    }
+});
+
+// ========================================
+// USER LOGOUT ENDPOINT
+// ========================================
+app.post('/api/user/logout', (req, res) => {
+    try {
+        const { sessionId } = req.body;
+        
+        console.log('🚪 Logout request received:', sessionId);
+        
+        if (sessionId && activeSessions[sessionId]) {
+            delete activeSessions[sessionId];
+            console.log('✅ Session removed:', sessionId);
+            console.log('📊 Active sessions now:', Object.keys(activeSessions).length);
+            return res.json({ success: true });
+        } else {
+            console.log('⚠️ Session not found:', sessionId);
+            return res.json({ success: false, reason: 'Session not found' });
+        }
+    } catch (error) {
+        console.error('❌ Logout error:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 // ========================================
 // HEALTH CHECK
 // ========================================
