@@ -1,4 +1,3 @@
-
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -123,15 +122,7 @@ app.post('/api/user/validate-key', async (req, res) => {
 // ========================================
 app.post('/api/admin/save-key', async (req, res) => {
     try {
-        const { key, pin, device, exp, adminToken } = req.body;
-
-        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
-        if (adminToken !== SECRET) {
-            return res.status(401).json({
-                success: false,
-                reason: 'Unauthorized'
-            });
-        }
+        const { key, pin, device, exp } = req.body;
 
         if (!key || !pin || !device || !exp) {
             return res.json({
@@ -173,15 +164,7 @@ app.post('/api/admin/save-key', async (req, res) => {
 // ========================================
 app.post('/api/admin/delete-key', async (req, res) => {
     try {
-        const { key, adminToken } = req.body;
-
-        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
-        if (adminToken !== SECRET) {
-            return res.status(401).json({
-                success: false,
-                reason: 'Unauthorized'
-            });
-        }
+        const { key } = req.body;
 
         const result = await pool.query(
             'DELETE FROM keys WHERE key_string = $1',
@@ -214,15 +197,7 @@ app.post('/api/admin/delete-key', async (req, res) => {
 // ========================================
 app.post('/api/admin/disable-key', async (req, res) => {
     try {
-        const { key, adminToken } = req.body;
-
-        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
-        if (adminToken !== SECRET) {
-            return res.status(401).json({
-                success: false,
-                reason: 'Unauthorized'
-            });
-        }
+        const { key } = req.body;
 
         const result = await pool.query(
             'UPDATE keys SET active = false WHERE key_string = $1',
@@ -255,16 +230,6 @@ app.post('/api/admin/disable-key', async (req, res) => {
 // ========================================
 app.post('/api/admin/get-keys', async (req, res) => {
     try {
-        const { adminToken } = req.body;
-
-        const SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-secret';
-        if (adminToken !== SECRET) {
-            return res.status(401).json({
-                success: false,
-                reason: 'Unauthorized'
-            });
-        }
-
         const result = await pool.query(
             'SELECT id, key_string, device, exp, active, created_at FROM keys ORDER BY created_at DESC'
         );
