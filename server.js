@@ -1,21 +1,15 @@
-// ========================================
-// CRASH ANALYZER SECURE SERVER
-// Deploy this to Railway
-// ========================================
 
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// ========================================
-// DATABASE CONNECTION
-// ========================================
-
+// DATABASE
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL
 });
@@ -25,9 +19,36 @@ pool.on('error', (err) => {
 });
 
 // ========================================
-// API 1: VALIDATE USER KEY
+// ADMIN LOGIN
 // ========================================
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.json({ success: false, reason: 'No password' });
+        }
+        
+        // Hash the password
+        const hash = crypto.createHash('sha256').update(password).digest('hex');
+        
+        // Check against stored hash
+        const ADMIN_HASH = 'f2cac0b4c2388b5457f46f71c7bb22d6d094629d7e1ad57283ee43d8e9bfeec6';
+        
+        if (hash === ADMIN_HASH) {
+            return res.json({ success: true });
+        } else {
+            return res.json({ success: false, reason: 'Wrong password' });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        return res.json({ success: false, reason: 'Server error' });
+    }
+});
 
+// ========================================
+// VALIDATE USER KEY
+// ========================================
 app.post('/api/user/validate-key', async (req, res) => {
     try {
         const { key, pin, device } = req.body;
@@ -98,9 +119,8 @@ app.post('/api/user/validate-key', async (req, res) => {
 });
 
 // ========================================
-// API 2: SAVE KEY (ADMIN)
+// SAVE KEY (ADMIN)
 // ========================================
-
 app.post('/api/admin/save-key', async (req, res) => {
     try {
         const { key, pin, device, exp, adminToken } = req.body;
@@ -149,9 +169,8 @@ app.post('/api/admin/save-key', async (req, res) => {
 });
 
 // ========================================
-// API 3: DELETE KEY (ADMIN)
+// DELETE KEY (ADMIN)
 // ========================================
-
 app.post('/api/admin/delete-key', async (req, res) => {
     try {
         const { key, adminToken } = req.body;
@@ -191,9 +210,8 @@ app.post('/api/admin/delete-key', async (req, res) => {
 });
 
 // ========================================
-// API 4: DISABLE KEY (ADMIN)
+// DISABLE KEY (ADMIN)
 // ========================================
-
 app.post('/api/admin/disable-key', async (req, res) => {
     try {
         const { key, adminToken } = req.body;
@@ -233,9 +251,8 @@ app.post('/api/admin/disable-key', async (req, res) => {
 });
 
 // ========================================
-// API 5: GET ALL KEYS (ADMIN)
+// GET ALL KEYS (ADMIN)
 // ========================================
-
 app.post('/api/admin/get-keys', async (req, res) => {
     try {
         const { adminToken } = req.body;
@@ -269,7 +286,6 @@ app.post('/api/admin/get-keys', async (req, res) => {
 // ========================================
 // HEALTH CHECK
 // ========================================
-
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', service: 'Crash Analyzer API' });
 });
@@ -277,10 +293,10 @@ app.get('/health', (req, res) => {
 // ========================================
 // START SERVER
 // ========================================
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Crash Analyzer API running on port ${PORT}`);
+    console.log(`📊 Database: Connected`);
 });
 
 process.on('SIGTERM', () => {
