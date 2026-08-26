@@ -17,6 +17,9 @@ pool.on('error', (err) => {
     console.error('❌ Database error:', err);
 });
 
+// Active sessions tracker
+let activeSessions = {};
+
 // ========================================
 // ADMIN LOGIN ENDPOINT
 // ========================================
@@ -154,10 +157,23 @@ app.post('/api/user/validate-key', async (req, res) => {
             });
         }
 
+        // Add session tracking
+        const sessionId = 'session_' + Math.random().toString(36).substring(7);
+        activeSessions[sessionId] = { key, timestamp: Date.now() };
+        
+        // Clean up expired sessions
+        Object.keys(activeSessions).forEach(sid => {
+            if (Date.now() - activeSessions[sid].timestamp > 5 * 60 * 1000) {
+                delete activeSessions[sid];
+            }
+        });
+
         console.log('✅ Key is valid!');
         return res.json({
             valid: true,
-            reason: 'Key is valid'
+            reason: 'Key is valid',
+            exp: dbKey.exp,
+            sessionId: sessionId
         });
 
     } catch (error) {
@@ -166,6 +182,31 @@ app.post('/api/user/validate-key', async (req, res) => {
             valid: false,
             reason: 'Server error'
         });
+    }
+});
+
+// ========================================
+// GET ACTIVE USERS
+// ========================================
+app.get('/api/stats/active-users', (req, res) => {
+    try {
+        const now = Date.now();
+        let activeCount = 0;
+        
+        // Count sessions active in last 5 minutes
+        Object.keys(activeSessions).forEach(sid => {
+            if (now - activeSessions[sid].timestamp < 5 * 60 * 1000) {
+                activeCount++;
+            }
+        });
+
+        return res.json({
+            activeUsers: activeCount || 1,
+            timestamp: now
+        });
+    } catch (error) {
+        console.error('❌ Get active users error:', error);
+        return res.json({ activeUsers: 1 });
     }
 });
 
