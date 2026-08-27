@@ -52,30 +52,32 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
+
 // ========================================
 // SAVE KEY ENDPOINT (ADMIN)
 // ========================================
 app.post('/api/admin/save-key', async (req, res) => {
     try {
-        const { key, exp } = req.body;
+        const { key, exp, created_at } = req.body;
         
         console.log('📥 Save key request received');
         console.log('Key:', key);
         console.log('Expiry:', exp);
+        console.log('Created at:', created_at);
         
-        if (!key || !exp) {
-            console.log('❌ Missing key or exp');
+        if (!key || !exp || !created_at) {
+            console.log('❌ Missing key, exp, or created_at');
             return res.json({
                 success: false,
-                reason: 'Missing key or expiry'
+                reason: 'Missing key, expiry, or created_at'
             });
         }
 
         console.log('💾 Inserting into database...');
         
         const result = await pool.query(
-            'INSERT INTO keys (key_string, exp, active) VALUES ($1, $2, true) RETURNING id',
-            [key, exp]
+            'INSERT INTO keys (key_string, exp, active, created_at) VALUES ($1, $2, true, $3) RETURNING id',
+            [key, exp, created_at]
         );
 
         console.log('✅ Key saved successfully! ID:', result.rows[0].id);
@@ -187,7 +189,24 @@ if (!dbKey.login_time) {
                 reason: 'Key already in use on another device'
             });
         }
-
+    // ========================================
+        // FROZEN TIME FOR UNUSED → ACTIVE ON LOGIN
+        // ========================================
+        // If first login (NOT YET USED becoming ACTIVE), restart expiry timer
+        if (!dbKey.login_time) {
+            // Calculate original duration from creation
+            const originalDuration = dbKey.exp - dbKey.created_at;
+            // Set new expiry from NOW
+            const newExpiry = Date.now() + originalDuration;
+            
+            // Update database
+            await pool.query(
+                'UPDATE keys SET exp = $1, login_time = $2 WHERE id = $3',
+                [newExpiry, Date.now(), dbKey.id]
+            );
+            
+            console.log('✅ Key activated! Timer started from now');
+        }
         // Add session tracking
         const sessionId = 'session_' + Math.random().toString(36).substring(7);
         activeSessions[sessionId] = { key, timestamp: Date.now() };
