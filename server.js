@@ -156,7 +156,25 @@ app.post('/api/user/validate-key', async (req, res) => {
                 reason: 'Key disabled'
             });
         }
-
+        // ========================================
+// FROZEN TIME FOR UNUSED → ACTIVE ON LOGIN
+// ========================================
+// If first login (NOT YET USED becoming ACTIVE), restart expiry timer
+if (!dbKey.login_time) {
+    // Calculate original duration from creation
+    const originalDuration = dbKey.exp - dbKey.created_at;
+    // Set new expiry from NOW
+    const newExpiry = Date.now() + originalDuration;
+    
+    // Update database
+    await pool.query(
+        'UPDATE keys SET exp = $1, login_time = $2 WHERE id = $3',
+        [newExpiry, Date.now(), dbKey.id]
+    );
+    
+    console.log('✅ Key activated! Timer started from now');
+}
+   
         // CHECK IF KEY IS ALREADY IN USE ON ANOTHER DEVICE
         const keyInUse = Object.keys(activeSessions).some(sid => {
             return activeSessions[sid].key === key;
