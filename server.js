@@ -447,6 +447,72 @@ app.get('/api/admin/check-key-active/:keyString', (req, res) => {
     }
 });
 // ========================================
+// CHECK GRAPH ENDPOINT (USER)
+// ========================================
+app.post('/api/user/check-graph', async (req, res) => {
+    try {
+        const { l1, l2, l3 } = req.body;
+        
+        if (!l1 || !l2 || !l3) {
+            return res.json({
+                result: '❌ ENTER ALL VALUES'
+            });
+        }
+
+        const l1Val = parseInt(l1);
+        const l2Val = parseInt(l2);
+        const l3Val = parseInt(l3);
+
+        // Logic based on requirements
+        if (l1Val >= 3 && l2Val >= 3 && l3Val >= 3) {
+            return res.json({ result: '🔴 WORST GRAPH' });
+        } else if (l1Val >= 3 && l2Val >= 3) {
+            return res.json({ result: '🔴 WORST GRAPH' });
+        } else if (l3Val >= 3 && l1Val < 3 && l2Val < 3) {
+            return res.json({ result: '🟢 GOOD GRAPH' });
+        } else if (l3Val >= 3 && l2Val >= 3) {
+            return res.json({ result: '🔴 WORST GRAPH' });
+        } else if (l2Val >= 3 && l3Val >= 3 && l1Val <= 3) {
+            return res.json({ result: '🟡 PLAY 2 ROUNDS ONLY' });
+        } else if (l1Val >= 3 && l2Val >= 2 && l3Val >= 2) {
+            return res.json({ result: '🟡 PLAY 2 ROUNDS ONLY' });
+        } else if (l1Val < 3 && l2Val < 3) {
+            return res.json({ result: '💎 SUPER GRAPH' });
+        } else if (l3Val >= 3 && l2Val < 3 && l1Val >= 3) {
+            return res.json({ result: '🟢 GOOD GRAPH' });
+        } else {
+            return res.json({ result: '⚪ NEUTRAL GRAPH' });
+        }
+
+    } catch (error) {
+        console.error('❌ Check graph error:', error);
+        return res.json({ result: '❌ SERVER ERROR' });
+    }
+});
+// ========================================
+// GET OPTIMAL TIMES ENDPOINT (USER)
+// ========================================
+app.get('/api/user/get-optimal-times', (req, res) => {
+    try {
+        const OPTIMAL_WINDOWS = [
+            { start: 2, end: 4 },
+            { start: 12, end: 13 },
+            { start: 17, end: 18 },
+            { start: 24, end: 25 },
+            { start: 38, end: 39 },
+            { start: 41, end: 42 },
+            { start: 47, end: 48 },
+            { start: 54, end: 55 },
+            { start: 58, end: 59 }
+        ];
+        
+        return res.json({ windows: OPTIMAL_WINDOWS });
+    } catch (error) {
+        console.error('❌ Get optimal times error:', error);
+        return res.json({ windows: [] });
+    }
+});
+// ========================================
 // ANALYZE SEED ENDPOINT (USER)
 // ========================================
 app.post('/api/user/analyze-seed', async (req, res) => {
