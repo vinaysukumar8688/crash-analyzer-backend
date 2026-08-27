@@ -446,7 +446,179 @@ app.get('/api/admin/check-key-active/:keyString', (req, res) => {
         return res.json({ isActive: false });
     }
 });
+// ========================================
+// ANALYZE SEED ENDPOINT (USER)
+// ========================================
+app.post('/api/user/analyze-seed', async (req, res) => {
+    try {
+        const { seed } = req.body;
+        
+        if (!seed || seed.length < 20) {
+            return res.json({
+                pattern: '⏳ WAIT'
+            });
+        }
 
+        // 💖 3x-10x: 2+ vowels at positions 5-10 AND 1+ vowel at 18-25
+        const vowels = 'AEIOUAEIOUAEIOU';
+        const vowelsAt510 = (seed[5] && vowels.includes(seed[5].toUpperCase())) + 
+                            (seed[6] && vowels.includes(seed[6].toUpperCase())) +
+                            (seed[7] && vowels.includes(seed[7].toUpperCase())) +
+                            (seed[8] && vowels.includes(seed[8].toUpperCase())) +
+                            (seed[9] && vowels.includes(seed[9].toUpperCase())) +
+                            (seed[10] && vowels.includes(seed[10].toUpperCase()));
+        const vowelsAt1825 = (seed[18] && vowels.includes(seed[18].toUpperCase())) +
+                             (seed[19] && vowels.includes(seed[19].toUpperCase())) +
+                             (seed[20] && vowels.includes(seed[20].toUpperCase())) +
+                             (seed[21] && vowels.includes(seed[21].toUpperCase())) +
+                             (seed[22] && vowels.includes(seed[22].toUpperCase())) +
+                             (seed[23] && vowels.includes(seed[23].toUpperCase())) +
+                             (seed[24] && vowels.includes(seed[24].toUpperCase())) +
+                             (seed[25] && vowels.includes(seed[25].toUpperCase()));
+        
+        if (vowelsAt510 >= 2 && vowelsAt1825 >= 1) {
+            return res.json({ pattern: '💖 3x-10x' });
+        }
+
+        // 🔴 CRASH: 2+ S/N at positions 6-10 AND 1+ S/N at 15-20
+        const sn = 'SN';
+        const snAt610 = (seed[6] && sn.includes(seed[6].toUpperCase())) +
+                        (seed[7] && sn.includes(seed[7].toUpperCase())) +
+                        (seed[8] && sn.includes(seed[8].toUpperCase())) +
+                        (seed[9] && sn.includes(seed[9].toUpperCase())) +
+                        (seed[10] && sn.includes(seed[10].toUpperCase()));
+        const snAt1520 = (seed[15] && sn.includes(seed[15].toUpperCase())) +
+                         (seed[16] && sn.includes(seed[16].toUpperCase())) +
+                         (seed[17] && sn.includes(seed[17].toUpperCase())) +
+                         (seed[18] && sn.includes(seed[18].toUpperCase())) +
+                         (seed[19] && sn.includes(seed[19].toUpperCase())) +
+                         (seed[20] && sn.includes(seed[20].toUpperCase()));
+        
+        if (snAt610 >= 2 && snAt1520 >= 1) {
+            return res.json({ pattern: '🔴 CRASH' });
+        }
+
+        // 💙 4x: 1+ K/Z/X at positions 6-10 AND 2+ K/Z/X at 12+
+        const kzx = 'KZX';
+        const kzxAt610 = (seed[6] && kzx.includes(seed[6].toUpperCase())) +
+                         (seed[7] && kzx.includes(seed[7].toUpperCase())) +
+                         (seed[8] && kzx.includes(seed[8].toUpperCase())) +
+                         (seed[9] && kzx.includes(seed[9].toUpperCase())) +
+                         (seed[10] && kzx.includes(seed[10].toUpperCase()));
+        const kzxAt12plus = seed.substring(12).split('').reduce((count, c) => {
+            return count + (kzx.includes(c.toUpperCase()) ? 1 : 0);
+        }, 0);
+        
+        if (kzxAt610 >= 1 && kzxAt12plus >= 2) {
+            return res.json({ pattern: '💙 4x' });
+        }
+
+        // 💎 3x-100x: 1+ rare letters (y/v/z) at positions 2-5
+        const rare = 'YVZ';
+        const rareAt25 = (seed[2] && rare.includes(seed[2].toUpperCase())) +
+                         (seed[3] && rare.includes(seed[3].toUpperCase())) +
+                         (seed[4] && rare.includes(seed[4].toUpperCase())) +
+                         (seed[5] && rare.includes(seed[5].toUpperCase()));
+        
+        if (rareAt25 >= 1) {
+            return res.json({ pattern: '💎 3x-100x' });
+        }
+
+        // ⏳ WAIT: No pattern matched
+        return res.json({ pattern: '⏳ WAIT' });
+
+    } catch (error) {
+        console.error('❌ Analyze seed error:', error);
+        return res.json({ pattern: '⏳ WAIT' });
+    }
+});
+// ========================================
+// ANALYZE SEED ENDPOINT (USER)
+// ========================================
+app.post('/api/user/analyze-seed', async (req, res) => {
+    try {
+        const { seed } = req.body;
+        
+        // Check seed length - must be 40+ chars
+        if (!seed || seed.length < 40) {
+            return res.json({
+                pattern: '❌ ENTER CORRECT SEED'
+            });
+        }
+
+        // 💖 3x-10x: 2+ vowels at positions 5-10 AND 1+ vowel at 18-25
+        const vowels = 'AEIOUAEIOUAEIOU';
+        const vowelsAt510 = (seed[5] && vowels.includes(seed[5].toUpperCase())) + 
+                            (seed[6] && vowels.includes(seed[6].toUpperCase())) +
+                            (seed[7] && vowels.includes(seed[7].toUpperCase())) +
+                            (seed[8] && vowels.includes(seed[8].toUpperCase())) +
+                            (seed[9] && vowels.includes(seed[9].toUpperCase())) +
+                            (seed[10] && vowels.includes(seed[10].toUpperCase()));
+        const vowelsAt1825 = (seed[18] && vowels.includes(seed[18].toUpperCase())) +
+                             (seed[19] && vowels.includes(seed[19].toUpperCase())) +
+                             (seed[20] && vowels.includes(seed[20].toUpperCase())) +
+                             (seed[21] && vowels.includes(seed[21].toUpperCase())) +
+                             (seed[22] && vowels.includes(seed[22].toUpperCase())) +
+                             (seed[23] && vowels.includes(seed[23].toUpperCase())) +
+                             (seed[24] && vowels.includes(seed[24].toUpperCase())) +
+                             (seed[25] && vowels.includes(seed[25].toUpperCase()));
+        
+        if (vowelsAt510 >= 2 && vowelsAt1825 >= 1) {
+            return res.json({ pattern: '💖 3x-10x' });
+        }
+
+        // 🔴 CRASH: 2+ S/N at positions 6-10 AND 1+ S/N at 15-20
+        const sn = 'SN';
+        const snAt610 = (seed[6] && sn.includes(seed[6].toUpperCase())) +
+                        (seed[7] && sn.includes(seed[7].toUpperCase())) +
+                        (seed[8] && sn.includes(seed[8].toUpperCase())) +
+                        (seed[9] && sn.includes(seed[9].toUpperCase())) +
+                        (seed[10] && sn.includes(seed[10].toUpperCase()));
+        const snAt1520 = (seed[15] && sn.includes(seed[15].toUpperCase())) +
+                         (seed[16] && sn.includes(seed[16].toUpperCase())) +
+                         (seed[17] && sn.includes(seed[17].toUpperCase())) +
+                         (seed[18] && sn.includes(seed[18].toUpperCase())) +
+                         (seed[19] && sn.includes(seed[19].toUpperCase())) +
+                         (seed[20] && sn.includes(seed[20].toUpperCase()));
+        
+        if (snAt610 >= 2 && snAt1520 >= 1) {
+            return res.json({ pattern: '🔴 CRASH' });
+        }
+
+        // 💙 4x: 1+ K/Z/X at positions 6-10 AND 2+ K/Z/X at 12+
+        const kzx = 'KZX';
+        const kzxAt610 = (seed[6] && kzx.includes(seed[6].toUpperCase())) +
+                         (seed[7] && kzx.includes(seed[7].toUpperCase())) +
+                         (seed[8] && kzx.includes(seed[8].toUpperCase())) +
+                         (seed[9] && kzx.includes(seed[9].toUpperCase())) +
+                         (seed[10] && kzx.includes(seed[10].toUpperCase()));
+        const kzxAt12plus = seed.substring(12).split('').reduce((count, c) => {
+            return count + (kzx.includes(c.toUpperCase()) ? 1 : 0);
+        }, 0);
+        
+        if (kzxAt610 >= 1 && kzxAt12plus >= 2) {
+            return res.json({ pattern: '💙 4x' });
+        }
+
+        // 💎 3x-100x: 1+ rare letters (y/v/z) at positions 2-5
+        const rare = 'YVZ';
+        const rareAt25 = (seed[2] && rare.includes(seed[2].toUpperCase())) +
+                         (seed[3] && rare.includes(seed[3].toUpperCase())) +
+                         (seed[4] && rare.includes(seed[4].toUpperCase())) +
+                         (seed[5] && rare.includes(seed[5].toUpperCase()));
+        
+        if (rareAt25 >= 1) {
+            return res.json({ pattern: '💎 3x-100x' });
+        }
+
+        // ⏳ WAIT FOR NEXT ROUND: No pattern matched
+        return res.json({ pattern: '⏳ WAIT FOR NEXT ROUND' });
+
+    } catch (error) {
+        console.error('❌ Analyze seed error:', error);
+        return res.json({ pattern: '⏳ WAIT FOR NEXT ROUND' });
+    }
+});
 // ========================================
 // HEALTH CHECK
 // ========================================
