@@ -453,11 +453,11 @@ app.post('/api/user/analyze-seed', async (req, res) => {
     try {
         const { seed } = req.body;
         
-        if (!seed || seed.length < 20) {
-            return res.json({
-                pattern: '⏳ WAIT'
-            });
-        }
+        if (!seed || seed.length < 40) {
+    return res.json({
+        pattern: '❌ ENTER CORRECT SEED'
+    });
+}
 
         // 💖 3x-10x: 2+ vowels at positions 5-10 AND 1+ vowel at 18-25
         const vowels = 'AEIOUAEIOUAEIOU';
