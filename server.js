@@ -158,25 +158,7 @@ app.post('/api/user/validate-key', async (req, res) => {
                 reason: 'Key disabled'
             });
         }
-        // ========================================
-// FROZEN TIME FOR UNUSED → ACTIVE ON LOGIN
-// ========================================
-// If first login (NOT YET USED becoming ACTIVE), restart expiry timer
-if (!dbKey.login_time) {
-    // Calculate original duration from creation
-    const originalDuration = dbKey.exp - dbKey.created_at;
-    // Set new expiry from NOW
-    const newExpiry = Date.now() + originalDuration;
-    
-    // Update database
-    await pool.query(
-        'UPDATE keys SET exp = $1, login_time = $2 WHERE id = $3',
-        [newExpiry, Date.now(), dbKey.id]
-    );
-    
-    console.log('✅ Key activated! Timer started from now');
-}
-   
+
         // CHECK IF KEY IS ALREADY IN USE ON ANOTHER DEVICE
         const keyInUse = Object.keys(activeSessions).some(sid => {
             return activeSessions[sid].key === key;
@@ -189,31 +171,29 @@ if (!dbKey.login_time) {
                 reason: 'Key already in use on another device'
             });
         }
-    // ========================================
+
+        // ========================================
         // FROZEN TIME FOR UNUSED → ACTIVE ON LOGIN
         // ========================================
-        // If first login (NOT YET USED becoming ACTIVE), restart expiry timer
+        let finalExp = dbKey.exp;
+        
         if (!dbKey.login_time) {
-            // Calculate original duration from creation
             const originalDuration = dbKey.exp - dbKey.created_at;
-            // Set new expiry from NOW
-            const newExpiry = Date.now() + originalDuration;
+            finalExp = Date.now() + originalDuration;
             
-            // Update database
             await pool.query(
                 'UPDATE keys SET exp = $1, login_time = $2 WHERE id = $3',
-                [newExpiry, Date.now(), dbKey.id]
+                [finalExp, Date.now(), dbKey.id]
             );
             
             console.log('✅ Key activated! Timer started from now');
         }
-        // Add session tracking
+
         const sessionId = 'session_' + Math.random().toString(36).substring(7);
         activeSessions[sessionId] = { key, timestamp: Date.now() };
         console.log('✅ New session created:', sessionId);
         console.log('📊 Current active sessions:', Object.keys(activeSessions).length);
         
-        // Clean up expired sessions (older than 1 minute = inactive)
         Object.keys(activeSessions).forEach(sid => {
             if (Date.now() - activeSessions[sid].timestamp > 1 * 60 * 1000) {
                 delete activeSessions[sid];
@@ -225,7 +205,7 @@ if (!dbKey.login_time) {
         return res.json({
             valid: true,
             reason: 'Key is valid',
-            exp: dbKey.exp,
+            exp: finalExp,
             sessionId: sessionId
         });
 
@@ -450,6 +430,7 @@ app.post('/api/user/logout', (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
+
 // ========================================
 // CHECK IF KEY IS ACTIVE (USER LOGGED IN)
 // ========================================
@@ -465,6 +446,7 @@ app.get('/api/admin/check-key-active/:keyString', (req, res) => {
         return res.json({ isActive: false });
     }
 });
+
 // ========================================
 // HEALTH CHECK
 // ========================================
