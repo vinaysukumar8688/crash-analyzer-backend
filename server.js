@@ -413,7 +413,21 @@ app.post('/api/user/logout', (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
-
+// ========================================
+// CHECK IF KEY IS ACTIVE (USER LOGGED IN)
+// ========================================
+app.get('/api/admin/check-key-active/:keyString', (req, res) => {
+    try {
+        const { keyString } = req.params;
+        const isActive = Object.keys(activeSessions).some(sid => {
+            return activeSessions[sid].key === keyString;
+        });
+        return res.json({ isActive });
+    } catch (error) {
+        console.error('❌ Check key active error:', error);
+        return res.json({ isActive: false });
+    }
+});
 // ========================================
 // HEALTH CHECK
 // ========================================
