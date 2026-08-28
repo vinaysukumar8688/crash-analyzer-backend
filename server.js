@@ -628,11 +628,112 @@ function applyRules(check1, check2) {
       return 'WAIT FOR NEXT ROUND ✅';
     }
     return '⏳ WAIT FOR NEXT ROUND ✅';
+
+// Helper: Count characters
+function countCharacters(str, chars) {
+  let count = 0;
+  for (let char of str) {
+    if (chars.includes(char.toUpperCase())) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// Helper: Count at positions
+function countAtPositions(str, chars, startPos, endPos) {
+  let count = 0;
+  for (let i = startPos - 1; i < endPos && i < str.length; i++) {
+    if (chars.includes(str[i].toUpperCase())) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// CHECK 1: Position-Based
+function performCheck1(seed) {
+  // Check CRASH
+  const crashPos610 = countAtPositions(seed, 'SN', 6, 10);
+  const crashPos1520 = countAtPositions(seed, 'SN', 15, 20);
+  if (crashPos610 >= 2 && crashPos1520 >= 1) {
+    return '🔴 CRASH';
+  }
+
+  // Check 10x
+  const vowelsPos510 = countAtPositions(seed, 'AEIOU', 5, 10);
+  const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
+  if (vowelsPos510 >= 2 && vowelsPos1825 >= 1) {
+    return '💖 10x';
+  }
+
+  // Check 4x
+  const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
+  const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
+  if (kzxPos610 >= 1 && kzxPos12Plus >= 2) {
+    return '💙 4x';
+  }
+
+  // Check 100x
+  const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
+  if (rarePos25 >= 1) {
+    return '💎 100x';
+  }
+
+  // Default
+  return '⏳ WAIT';
+}
+
+// CHECK 2: Total-Count Based
+function performCheck2(seed) {
+  const totalSN = countCharacters(seed, 'SN');
+  const totalVowels = countCharacters(seed, 'AEIOU');
+  const totalRare = countCharacters(seed, 'YVZ');
+
+  // Check CRASH (First!)
+  if (totalSN >= 3) {
+    return '🔴 CRASH';
+  }
+
+  // Check 100x (Second!)
+  if (totalSN === 0 && totalRare >= 2) {
+    return '💎 100x';
+  }
+
+  // Check 10x (Third!)
+  if (totalSN <= 2 && totalVowels >= 5) {
+    return '💖 10x';
+  }
+
+  // Check 4x (Fourth!)
+  if (totalSN <= 2 && totalVowels <= 5 && totalRare >= 2) {
+    return '💙 4x';
+  }
+
+  // Default
+  return '⏳ WAIT';
+}
+
+// Apply Final Rules
+function applyRules(check1, check2) {
+  // ⭐ RULE 1: CHECK 2 = CRASH (HIGHEST PRIORITY!)
+  if (check2 === '🔴 CRASH') {
+    return '🔴 CRASH 2 to 5 ROUNDS above';
+  }
+
+  // Rule 2: CHECK 1 = CRASH
+  if (check1 === '🔴 CRASH') {
+    return '🔴 CRASH 2 to 5 rounds above';
+  }
+
+  // Rule 3: CHECK 1 = WAIT (ALWAYS - IGNORE CHECK 2!)
+  if (check1 === '⏳ WAIT') {
+    return '⏳ WAIT FOR NEXT ROUND ✅';
   }
 
   // Rule 4: CHECK 1 = POSITIVE + CHECK 2 = SAME
   if (check1 === check2) {
-    return `${check1} ABOVE`;
+    return `${check1} ✅`;
   } 
   
   // Rule 5: CHECK 1 = POSITIVE + CHECK 2 ≠ SAME (not crash)
@@ -658,9 +759,10 @@ function analyzeSeed(seed) {
   };
 }
 
-// ========================================
-// ANALYZE SEED ENDPOINT (USER) - NEW CHECK 1 & CHECK 2
-// ========================================
+// ============================================
+// ENDPOINT (Already exists, just ensure this code is called)
+// ============================================
+
 app.post('/api/user/analyze-seed', async (req, res) => {
     try {
         const { seed } = req.body;
@@ -683,6 +785,10 @@ app.post('/api/user/analyze-seed', async (req, res) => {
         return res.json({ pattern: '⏳ WAIT FOR NEXT ROUND' });
     }
 });
+
+// ============================================
+// END OF CODE TO COPY
+// ============================================
 
 // ========================================
 // HEALTH CHECK
