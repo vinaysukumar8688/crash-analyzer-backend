@@ -8,6 +8,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// DATABASE CONNECTION
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL
 });
@@ -16,8 +17,12 @@ pool.on('error', (err) => {
     console.error('❌ Database error:', err);
 });
 
+// Active sessions tracker
 let activeSessions = {};
 
+// ========================================
+// ADMIN LOGIN ENDPOINT
+// ========================================
 app.post('/api/admin/login', async (req, res) => {
     try {
         const { password } = req.body;
@@ -40,6 +45,9 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
+// ========================================
+// SAVE KEY ENDPOINT (ADMIN)
+// ========================================
 app.post('/api/admin/save-key', async (req, res) => {
     try {
         const { key, exp, created_at } = req.body;
@@ -62,6 +70,9 @@ app.post('/api/admin/save-key', async (req, res) => {
     }
 });
 
+// ========================================
+// VALIDATE KEY ENDPOINT (USER)
+// ========================================
 app.post('/api/user/validate-key', async (req, res) => {
     try {
         const { key } = req.body;
@@ -115,6 +126,9 @@ app.post('/api/user/validate-key', async (req, res) => {
     }
 });
 
+// ========================================
+// GET ALL KEYS ENDPOINT (ADMIN)
+// ========================================
 app.get('/api/admin/get-all-keys', async (req, res) => {
     try {
         console.log('📋 Getting all keys...');
@@ -128,6 +142,9 @@ app.get('/api/admin/get-all-keys', async (req, res) => {
     }
 });
 
+// ========================================
+// RESET KEY ENDPOINT (ADMIN)
+// ========================================
 app.post('/api/admin/reset-key', async (req, res) => {
     try {
         const { keyId, keyString, newExpiry } = req.body;
@@ -153,6 +170,9 @@ app.post('/api/admin/reset-key', async (req, res) => {
     }
 });
 
+// ========================================
+// DELETE KEY ENDPOINT (ADMIN)
+// ========================================
 app.post('/api/admin/delete-key', async (req, res) => {
     try {
         const { keyId } = req.body;
@@ -180,6 +200,9 @@ app.post('/api/admin/delete-key', async (req, res) => {
     }
 });
 
+// ========================================
+// GET ACTIVE USERS
+// ========================================
 app.get('/api/stats/active-users', (req, res) => {
     try {
         const now = Date.now();
@@ -196,6 +219,9 @@ app.get('/api/stats/active-users', (req, res) => {
     }
 });
 
+// ========================================
+// USER HEARTBEAT ENDPOINT
+// ========================================
 app.post('/api/user/heartbeat', (req, res) => {
     try {
         const { sessionId } = req.body;
@@ -208,6 +234,9 @@ app.post('/api/user/heartbeat', (req, res) => {
     }
 });
 
+// ========================================
+// USER LOGOUT ENDPOINT
+// ========================================
 app.post('/api/user/logout', (req, res) => {
     try {
         const { sessionId } = req.body;
@@ -223,6 +252,9 @@ app.post('/api/user/logout', (req, res) => {
     }
 });
 
+// ========================================
+// CHECK IF KEY IS ACTIVE
+// ========================================
 app.get('/api/admin/check-key-active/:keyString', (req, res) => {
     try {
         const { keyString } = req.params;
@@ -236,6 +268,9 @@ app.get('/api/admin/check-key-active/:keyString', (req, res) => {
     }
 });
 
+// ========================================
+// CHECK GRAPH ENDPOINT
+// ========================================
 app.post('/api/user/check-graph', async (req, res) => {
     try {
         const { l1, l2, l3 } = req.body;
@@ -270,6 +305,9 @@ app.post('/api/user/check-graph', async (req, res) => {
     }
 });
 
+// ========================================
+// GET OPTIMAL TIMES
+// ========================================
 app.get('/api/user/get-optimal-times', (req, res) => {
     try {
         const OPTIMAL_WINDOWS = [
@@ -289,6 +327,10 @@ app.get('/api/user/get-optimal-times', (req, res) => {
         return res.json({ windows: [] });
     }
 });
+
+// ============================================
+// SEED ANALYSIS: CHECK 1 + CHECK 2 CRASH DETECTION
+// ============================================
 
 function countAtPositions(str, chars, startPos, endPos) {
   let count = 0;
@@ -310,6 +352,7 @@ function countCharacters(str, chars) {
   return count;
 }
 
+// CHECK 1: Position-Based Analysis
 function performCheck1(seed) {
   const crashPos610 = countAtPositions(seed, 'SN', 6, 10);
   const crashPos1520 = countAtPositions(seed, 'SN', 15, 20);
@@ -320,23 +363,24 @@ function performCheck1(seed) {
   const vowelsPos510 = countAtPositions(seed, 'AEIOU', 5, 10);
   const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
   if (vowelsPos510 >= 2 && vowelsPos1825 >= 1) {
-    return '💖 3x to 10x';
+    return '💖 10x';
   }
 
   const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
   const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
   if (kzxPos610 >= 1 && kzxPos12Plus >= 2) {
-    return '💙 4x above';
+    return '💙 4x';
   }
 
   const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
   if (rarePos25 >= 1) {
-    return '💎 3x to 100x';
+    return '💎 100x';
   }
 
   return '⏳ WAIT';
 }
 
+// CHECK 2: Crash Detection Only (Count S/N >= 3)
 function isCrash(seed) {
   const totalSN = countCharacters(seed, 'SN');
   return totalSN >= 3;
@@ -347,18 +391,28 @@ function analyzeSeed(seed) {
     return { pattern: '❌ ENTER CORRECT SEED' };
   }
 
+  // Step 1: Run CHECK 1
   const check1 = performCheck1(seed);
+
+  // Step 2: Run CHECK 2 (crash detection only)
   const crashDetected = isCrash(seed);
 
+  // Step 3: Apply Logic
   let finalResult = check1;
   
+  // If CHECK 2 detects CRASH → Override and show CRASH (Safety First!)
   if (crashDetected && check1 !== '🔴 CRASH') {
     finalResult = '🔴 CRASH';
   }
 
-  return { pattern: finalResult };
+  return {
+    pattern: finalResult
+  };
 }
 
+// ========================================
+// ANALYZE SEED ENDPOINT
+// ========================================
 app.post('/api/user/analyze-seed', async (req, res) => {
     try {
         const { seed } = req.body;
@@ -366,17 +420,25 @@ app.post('/api/user/analyze-seed', async (req, res) => {
             return res.json({ pattern: '❌ ENTER CORRECT SEED' });
         }
         const analysis = analyzeSeed(seed);
-        return res.json({ pattern: analysis.pattern });
+        return res.json({
+            pattern: analysis.pattern
+        });
     } catch (error) {
         console.error('❌ Analyze seed error:', error);
         return res.json({ pattern: '⏳ WAIT' });
     }
 });
 
+// ========================================
+// HEALTH CHECK
+// ========================================
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', service: 'Crash Analyzer API' });
 });
 
+// ========================================
+// START SERVER
+// ========================================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
