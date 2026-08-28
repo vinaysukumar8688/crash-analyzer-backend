@@ -363,18 +363,18 @@ function performCheck1(seed) {
   const vowelsPos510 = countAtPositions(seed, 'AEIOU', 5, 10);
   const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
   if (vowelsPos510 >= 2 && vowelsPos1825 >= 1) {
-    return '💖 10x';
+    return '💖 3x to 10x above';
   }
 
   const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
   const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
   if (kzxPos610 >= 1 && kzxPos12Plus >= 2) {
-    return '💙 4x';
+    return '💙 2x to 4x above';
   }
 
   const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
   if (rarePos25 >= 1) {
-    return '💎 100x';
+    return '💎 3x to 100x above';
   }
 
   return '⏳ WAIT';
