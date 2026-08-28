@@ -567,7 +567,7 @@ function performCheck1(seed) {
   // Check 100x
   const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
   if (rarePos25 >= 1) {
-    return '💎 3x';
+    return '💎 100x';
   }
 
   // Default
@@ -587,7 +587,7 @@ function performCheck2(seed) {
 
   // Check 100x (Second!)
   if (totalSN === 0 && totalRare >= 2) {
-    return '💎 3x';
+    return '💎 100x';
   }
 
   // Check 10x (Third!)
@@ -618,7 +618,7 @@ function applyRules(check1, check2) {
 
   // Rule 3: CHECK 1 = WAIT + CHECK 2 = POSITIVE (not crash)
   if (check1 === '⏳ WAIT') {
-    if (check2 === '💎 3x') {
+    if (check2 === '💎 100x') {
       return 'WAIT FOR NEXT ROUND ✅';
     }
     if (check2 === '💖 10x') {
