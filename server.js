@@ -619,13 +619,13 @@ function applyRules(check1, check2) {
   // Rule 3: CHECK 1 = WAIT + CHECK 2 = POSITIVE (not crash)
   if (check1 === '⏳ WAIT') {
     if (check2 === '💎 3x') {
-      return '3x TO 10x ABOVE ✅';
+      return 'WAIT FOR NEXT ROUND ✅';
     }
     if (check2 === '💖 10x') {
-      return '3x TO 10x ABOVE ✅';
+      return 'WAIT FOR NEXT ROUND ✅';
     }
     if (check2 === '💙 4x') {
-      return '3x TO 4x ABOVE ✅';
+      return 'WAIT FOR NEXT ROUND ✅';
     }
     return '⏳ WAIT FOR NEXT ROUND ✅';
   }
