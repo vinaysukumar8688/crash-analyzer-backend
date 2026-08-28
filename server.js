@@ -597,7 +597,7 @@ function performCheck2(seed) {
 
   // Check 4x (Fourth!)
   if (totalSN <= 2 && totalVowels <= 5 && totalRare >= 2) {
-    return '💙 4x ABOVE';
+    return '💙 4x';
   }
 
   // Default
@@ -606,16 +606,18 @@ function performCheck2(seed) {
 
 // Apply Final Rules
 function applyRules(check1, check2) {
-  // Rule 1: CHECK 1 = CRASH
-  if (check1 === '🔴 CRASH') {
-    return '🔴 CRASH ✅';
+  // ⭐ RULE 1: CHECK 2 = CRASH (HIGHEST PRIORITY - CHECK FIRST!)
+  if (check2 === '🔴 CRASH') {
+    return '🔴 CRASH 2 to 5 ROUNDS above';
   }
 
-  // Rule 2: CHECK 1 = WAIT + CHECK 2 = POSITIVE
+  // Rule 2: CHECK 1 = CRASH
+  if (check1 === '🔴 CRASH') {
+    return '🔴 CRASH 2 to 5 rounds above';
+  }
+
+  // Rule 3: CHECK 1 = WAIT + CHECK 2 = POSITIVE (not crash)
   if (check1 === '⏳ WAIT') {
-    if (check2 === '🔴 CRASH') {
-      return '🔴 CRASH ✅';
-    }
     if (check2 === '💎 100x') {
       return '3x TO 💎 100x ABOVE ✅';
     }
@@ -628,10 +630,13 @@ function applyRules(check1, check2) {
     return '⏳ WAIT FOR NEXT ROUND ✅';
   }
 
-  // Rule 3 & 4: CHECK 1 = POSITIVE
+  // Rule 4: CHECK 1 = POSITIVE + CHECK 2 = SAME
   if (check1 === check2) {
     return `${check1} ✅`;
-  } else {
+  } 
+  
+  // Rule 5: CHECK 1 = POSITIVE + CHECK 2 ≠ SAME (not crash)
+  else {
     return `${check1} TO ${check2} ABOVE ✅`;
   }
 }
