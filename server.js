@@ -619,20 +619,20 @@ function applyRules(check1, check2) {
   // Rule 3: CHECK 1 = WAIT + CHECK 2 = POSITIVE (not crash)
   if (check1 === '⏳ WAIT') {
     if (check2 === '💎 100x') {
-      return '3x TO 💎 100x ABOVE ✅';
+      return '3x TO 10x ABOVE ✅';
     }
     if (check2 === '💖 10x') {
-      return '3x TO 💖 10x ABOVE ✅';
+      return '3x TO 10x ABOVE ✅';
     }
     if (check2 === '💙 4x') {
-      return '3x TO 💙 4x ABOVE ✅';
+      return '3x TO 4x ABOVE ✅';
     }
     return '⏳ WAIT FOR NEXT ROUND ✅';
   }
 
   // Rule 4: CHECK 1 = POSITIVE + CHECK 2 = SAME
   if (check1 === check2) {
-    return `${check1} ✅`;
+    return `${check1} ABOVE`;
   } 
   
   // Rule 5: CHECK 1 = POSITIVE + CHECK 2 ≠ SAME (not crash)
