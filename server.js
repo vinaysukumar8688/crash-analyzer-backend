@@ -133,7 +133,7 @@ app.get('/api/admin/get-all-keys', async (req, res) => {
     try {
         console.log('📋 Getting all keys...');
         const result = await pool.query(
-            'SELECT id, key_string, exp, active, created_at FROM keys ORDER BY created_at DESC'
+            'SELECT id, key_string, exp, active, created_at, created_by_reseller FROM keys ORDER BY created_at DESC'
         );
         return res.json({ success: true, keys: result.rows });
     } catch (error) {
