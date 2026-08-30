@@ -428,7 +428,172 @@ app.post('/api/user/analyze-seed', async (req, res) => {
         return res.json({ pattern: '⏳ WAIT' });
     }
 });
+ // ========================================
+// RESELLER ENDPOINTS
+// ========================================
 
+// POST /api/admin/create-reseller - Admin creates reseller code
+app.post('/api/admin/create-reseller', async (req, res) => {
+    try {
+        const { code, balance } = req.body;
+        if (!code || balance === undefined) {
+            return res.json({ success: false, reason: 'Missing code or balance' });
+        }
+        const result = await pool.query(
+            'INSERT INTO resellers (code, balance, active) VALUES ($1, $2, true) RETURNING *',
+            [code, balance]
+        );
+        console.log('✅ Reseller created:', code);
+        return res.json({ success: true, reseller: result.rows[0] });
+    } catch (error) {
+        console.error('❌ Create reseller error:', error);
+        if (error.code === '23505') {
+            return res.json({ success: false, reason: 'Reseller code already exists' });
+        }
+        return res.json({ success: false, reason: error.message });
+    }
+});
+
+// GET /api/admin/get-all-resellers - Admin gets all resellers
+app.get('/api/admin/get-all-resellers', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, code, balance, created_at, active FROM resellers ORDER BY created_at DESC'
+        );
+        return res.json({ success: true, resellers: result.rows });
+    } catch (error) {
+        console.error('❌ Get resellers error:', error);
+        return res.json({ success: false, reason: error.message });
+    }
+});
+
+// POST /api/admin/add-reseller-balance - Admin adds balance to reseller
+app.post('/api/admin/add-reseller-balance', async (req, res) => {
+    try {
+        const { code, amount } = req.body;
+        if (!code || !amount) {
+            return res.json({ success: false, reason: 'Missing code or amount' });
+        }
+        const result = await pool.query(
+            'UPDATE resellers SET balance = balance + $1 WHERE code = $2 RETURNING *',
+            [amount, code]
+        );
+        if (result.rows.length === 0) {
+            return res.json({ success: false, reason: 'Reseller not found' });
+        }
+        console.log('✅ Balance added to:', code, 'New balance:', result.rows[0].balance);
+        return res.json({ success: true, reseller: result.rows[0] });
+    } catch (error) {
+        console.error('❌ Add balance error:', error);
+        return res.json({ success: false, reason: error.message });
+    }
+});
+
+// POST /api/admin/remove-reseller - Admin removes/deletes reseller
+app.post('/api/admin/remove-reseller', async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) {
+            return res.json({ success: false, reason: 'Missing code' });
+        }
+        const result = await pool.query('DELETE FROM resellers WHERE code = $1', [code]);
+        if (result.rowCount === 0) {
+            return res.json({ success: false, reason: 'Reseller not found' });
+        }
+        console.log('✅ Reseller deleted:', code);
+        return res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Remove reseller error:', error);
+        return res.json({ success: false, reason: error.message });
+    }
+});
+
+// POST /api/reseller/login - Reseller login with code
+app.post('/api/reseller/login', async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) {
+            return res.json({ valid: false, reason: 'No code provided' });
+        }
+        const result = await pool.query(
+            'SELECT * FROM resellers WHERE code = $1 AND active = true',
+            [code]
+        );
+        if (result.rows.length === 0) {
+            console.log('❌ Invalid reseller code:', code);
+            return res.json({ valid: false, reason: 'Invalid reseller code' });
+        }
+        const reseller = result.rows[0];
+        const sessionId = 'reseller_' + Math.random().toString(36).substring(7);
+        activeSessions[sessionId] = { code, timestamp: Date.now() };
+        console.log('✅ Reseller logged in:', code, 'Session:', sessionId);
+        return res.json({ valid: true, sessionId, balance: reseller.balance });
+    } catch (error) {
+        console.error('❌ Reseller login error:', error);
+        return res.json({ valid: false, reason: 'Server error' });
+    }
+});
+
+// POST /api/reseller/save-key - Reseller creates key (deduct balance)
+app.post('/api/reseller/save-key', async (req, res) => {
+    try {
+        const { code, key, exp, durationCost } = req.body;
+        if (!code || !key || !exp || !durationCost) {
+            return res.json({ success: false, reason: 'Missing required fields' });
+        }
+        
+        // Get reseller
+        const resellerResult = await pool.query(
+            'SELECT * FROM resellers WHERE code = $1 AND active = true',
+            [code]
+        );
+        if (resellerResult.rows.length === 0) {
+            return res.json({ success: false, reason: 'Invalid reseller code' });
+        }
+        
+        const reseller = resellerResult.rows[0];
+        if (reseller.balance < durationCost) {
+            return res.json({ success: false, reason: 'Insufficient balance. Need: ' + durationCost + ', Have: ' + reseller.balance });
+        }
+        
+        // Create key
+        await pool.query(
+            'INSERT INTO keys (key_string, exp, active, created_at, created_by_reseller) VALUES ($1, $2, true, $3, $4)',
+            [key, exp, Date.now(), code]
+        );
+        
+        // Deduct balance
+        const updateResult = await pool.query(
+            'UPDATE resellers SET balance = balance - $1 WHERE code = $2 RETURNING balance',
+            [durationCost, code]
+        );
+        
+        const newBalance = updateResult.rows[0].balance;
+        console.log('✅ Key created by reseller:', code, 'New balance:', newBalance);
+        return res.json({ success: true, newBalance: newBalance });
+    } catch (error) {
+        console.error('❌ Save key error:', error);
+        return res.json({ success: false, reason: error.message });
+    }
+});
+
+// GET /api/reseller/get-balance/:code - Get reseller balance
+app.get('/api/reseller/get-balance/:code', async (req, res) => {
+    try {
+        const { code } = req.params;
+        const result = await pool.query(
+            'SELECT balance FROM resellers WHERE code = $1 AND active = true',
+            [code]
+        );
+        if (result.rows.length === 0) {
+            return res.json({ valid: false, reason: 'Invalid reseller code' });
+        }
+        return res.json({ valid: true, balance: result.rows[0].balance });
+    } catch (error) {
+        console.error('❌ Get balance error:', error);
+        return res.json({ valid: false });
+    }
+});
 // ========================================
 // HEALTH CHECK
 // ========================================
