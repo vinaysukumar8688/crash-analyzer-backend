@@ -599,7 +599,7 @@ app.get('/api/reseller/get-keys/:code', async (req, res) => {
     try {
         const { code } = req.params;
         const result = await pool.query(
-            'SELECT id, key_string, exp, active, created_at, created_by_reseller FROM keys WHERE created_by_reseller = $1 ORDER BY created_at DESC',
+            'SELECT id, key_string, exp, active, created_at, created_by_reseller FROM keys WHERE created_by_reseller IS NOT NULL AND created_by_reseller = $1 ORDER BY created_at DESC',
             [code]
         );
         return res.json({ success: true, keys: result.rows });
