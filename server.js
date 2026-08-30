@@ -598,6 +598,7 @@ app.get('/api/reseller/get-balance/:code', async (req, res) => {
 app.get('/api/reseller/get-keys/:code', async (req, res) => {
     try {
         const { code } = req.params;
+        console.log('🔑 Getting reseller keys for:', code);  // ADD THIS LINE
         const result = await pool.query(
             'SELECT id, key_string, exp, active, created_at, created_by_reseller FROM keys WHERE created_by_reseller IS NOT NULL AND created_by_reseller = $1 ORDER BY created_at DESC',
             [code]
