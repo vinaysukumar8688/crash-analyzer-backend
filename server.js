@@ -594,6 +594,20 @@ app.get('/api/reseller/get-balance/:code', async (req, res) => {
         return res.json({ valid: false });
     }
 });
+// GET /api/reseller/get-keys/:code - Get ONLY this reseller's keys
+app.get('/api/reseller/get-keys/:code', async (req, res) => {
+    try {
+        const { code } = req.params;
+        const result = await pool.query(
+            'SELECT id, key_string, exp, active, created_at, created_by_reseller FROM keys WHERE created_by_reseller = $1 ORDER BY created_at DESC',
+            [code]
+        );
+        return res.json({ success: true, keys: result.rows });
+    } catch (error) {
+        console.error('❌ Get reseller keys error:', error);
+        return res.json({ success: false, keys: [] });
+    }
+});
 // ========================================
 // HEALTH CHECK
 // ========================================
