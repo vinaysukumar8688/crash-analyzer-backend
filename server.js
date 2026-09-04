@@ -365,7 +365,7 @@ const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
 const pos14Char = seed[13]; // Position 14 (0-indexed = 13)
 const isPos14Letter = /[A-Za-z]/.test(pos14Char); // Check if it's a letter
 if (vowelsPos510 >= 2 && vowelsPos1825 >= 1 && isPos14Letter) {
-    return '💖 3x to 10x above';
+    return '💖 3x to 10x abovee';
 }
 
   const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
@@ -382,7 +382,7 @@ if (/[a-z]/.test(seed[36])) pos4xMatches++; // Pos 37: lowercase
 
 // All 3 conditions must be TRUE
 if (kzxPos610 >= 1 && kzxPos12Plus >= 2 && pos4xMatches >= 3) {
-    return '💙 2x to 4x above';
+    return '💙 2x to 4x abovee';
 }
 
   const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
