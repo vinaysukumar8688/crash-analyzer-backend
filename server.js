@@ -369,10 +369,21 @@ if (vowelsPos510 >= 2 && vowelsPos1825 >= 1 && isPos14Letter) {
 }
 
   const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
-  const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
-  if (kzxPos610 >= 1 && kzxPos12Plus >= 2) {
+const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
+
+// NEW: Position pattern check for 2x to 4x
+let pos4xMatches = 0;
+if (/[A-Z]/.test(seed[10])) pos4xMatches++; // Pos 11: UPPERCASE
+if (/[A-Z]/.test(seed[19])) pos4xMatches++; // Pos 20: UPPERCASE
+if (/[a-z]/.test(seed[22])) pos4xMatches++; // Pos 23: lowercase
+if (/[a-z]/.test(seed[24])) pos4xMatches++; // Pos 25: lowercase
+if (/[A-Z]/.test(seed[27])) pos4xMatches++; // Pos 28: UPPERCASE
+if (/[a-z]/.test(seed[36])) pos4xMatches++; // Pos 37: lowercase
+
+// All 3 conditions must be TRUE
+if (kzxPos610 >= 1 && kzxPos12Plus >= 2 && pos4xMatches >= 3) {
     return '💙 2x to 4x above';
-  }
+}
 
   const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
   if (rarePos25 >= 1) {
