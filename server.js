@@ -361,10 +361,12 @@ function performCheck1(seed) {
   }
 
   const vowelsPos510 = countAtPositions(seed, 'AEIOU', 5, 10);
-  const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
-  if (vowelsPos510 >= 2 && vowelsPos1825 >= 1) {
+const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
+const pos14Char = seed[13]; // Position 14 (0-indexed = 13)
+const isPos14Letter = /[A-Za-z]/.test(pos14Char); // Check if it's a letter
+if (vowelsPos510 >= 2 && vowelsPos1825 >= 1 && isPos14Letter) {
     return '💖 3x to 10x above';
-  }
+}
 
   const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
   const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
