@@ -532,7 +532,7 @@ function analyzeSeed(seed) {
 
   // Step 4: Check 100x
   if (is100x(seed)) {
-    return { pattern: '💎 3x to 100x above' };
+    return { pattern: '💎 2.5x to 3.5x above' };
   }
 
   // Step 5: Default to WAIT
