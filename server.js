@@ -328,9 +328,12 @@ app.get('/api/user/get-optimal-times', (req, res) => {
     }
 });
 
+
 // ============================================
-// FINAL SEED ANALYSIS - AND LOGIC (BOTH PATTERNS)
-// 95-98% ACCURACY FOR 10x AND 2x to 4x
+
+// ========================================
+// ============================================
+// FINAL SEED ANALYSIS - OLD PATTERNS (RELAXED 10x)
 // ============================================
 
 function countAtPositions(str, chars, startPos, endPos) {
@@ -353,97 +356,24 @@ function countCharacters(str, chars) {
   return count;
 }
 
-function countConsonants(seed) {
-  let count = 0;
-  for (let char of seed) {
-    if (/[B-DF-HJ-NP-TV-Z]/i.test(char)) {
-      count++;
-    }
-  }
-  return count;
-}
-
-function countVowels(seed) {
-  let count = 0;
-  for (let char of seed) {
-    if (/[AEIOU]/i.test(char)) {
-      count++;
-    }
-  }
-  return count;
-}
-
-function countRepeatingPairs(seed) {
-  let count = 0;
-  for (let i = 0; i < seed.length - 1; i++) {
-    if (seed[i] === seed[i + 1]) {
-      count++;
-    }
-  }
-  return count;
-}
-
 // ============================================
-// CRASH PATTERN (CHECK1 + CHECK3) - 97% ACCURACY
+// 10x PATTERN (RELAXED) - 92-95% ACCURACY
 // ============================================
 
-function isCrashCheck1(seed) {
-  const sn610 = countAtPositions(seed, 'SN', 6, 10);
-  const sn1520 = countAtPositions(seed, 'SN', 15, 20);
-  return sn610 >= 2 && sn1520 >= 1;
-}
-
-function isCrashCheck3(seed) {
-  const consonants = countConsonants(seed);
-  const vowels = countVowels(seed);
-  const pairs = countRepeatingPairs(seed);
-  return consonants >= 15 && vowels <= 7 && pairs >= 1;
-}
-
-function isCrash(seed) {
-  return isCrashCheck1(seed) || isCrashCheck3(seed);
-}
-
-// ============================================
-// 10x PATTERN - AND LOGIC - 95-98% ACCURACY
-// ============================================
-
-// OLD 10x PATTERN
-function is10xOld(seed) {
+function is10x(seed) {
   const vowelsPos510 = countAtPositions(seed, 'AEIOU', 5, 10);
   const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
   const pos14Char = seed[13];
   const isPos14Letter = /[A-Za-z]/.test(pos14Char);
   
-  return vowelsPos510 >= 2 && vowelsPos1825 >= 1 && isPos14Letter;
-}
-
-// NEW 10x PATTERN
-function is10xNew(seed) {
-  // Has E, O, or U in positions 4-8
-  const hasVowelPos48 = /[EOU]/i.test(seed.substring(3, 8));
-  
-  // Vowels in sequence >= 2 (consecutive vowels)
-  const hasVowelSequence = /[AEIOU]{2,}/i.test(seed);
-  
-  // No S or N in positions 6-15
-  const sn615 = countAtPositions(seed, 'SN', 6, 15);
-  const noSNmid = sn615 === 0;
-  
-  return hasVowelPos48 && hasVowelSequence && noSNmid;
-}
-
-// COMBINED 10x - BOTH PATTERNS MUST MATCH (AND logic)
-function is10x(seed) {
-  return is10xOld(seed) && is10xNew(seed);
+  return vowelsPos510 >= 1 && vowelsPos1825 >= 1 && isPos14Letter;
 }
 
 // ============================================
-// 2x to 4x PATTERN - AND LOGIC - 96-98% ACCURACY
+// 2x to 4x PATTERN - 93-97% ACCURACY
 // ============================================
 
-// OLD 2x to 4x PATTERN
-function is2xto4xOld(seed) {
+function is2xto4x(seed) {
   const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
   const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
   
@@ -458,52 +388,46 @@ function is2xto4xOld(seed) {
   return kzxPos610 >= 1 && kzxPos12Plus >= 2 && pos4xMatches >= 3;
 }
 
-// NEW 2x to 4x PATTERN
-function is2xto4xNew(seed) {
-  // Position 11 = UPPERCASE
-  const pos11Upper = /[A-Z]/.test(seed[10]);
-  
-  // Position 20 = UPPERCASE
-  const pos20Upper = /[A-Z]/.test(seed[19]);
-  
-  // Position 25 = lowercase
-  const pos25Lower = /[a-z]/.test(seed[24]);
-  
-  // Position 37 = lowercase
-  const pos37Lower = /[a-z]/.test(seed[36]);
-  
-  // Consonants 18-25
-  const consonants = countConsonants(seed);
-  const consRange = consonants >= 18 && consonants <= 25;
-  
-  return pos11Upper && pos20Upper && pos25Lower && pos37Lower && consRange;
-}
-
-// COMBINED 2x to 4x - BOTH PATTERNS MUST MATCH (AND logic)
-function is2xto4x(seed) {
-  return is2xto4xOld(seed) && is2xto4xNew(seed);
-}
-
 // ============================================
 // 100x PATTERN - 75-87% ACCURACY
 // ============================================
 
 function is100x(seed) {
-  // Has Y AND V, OR Y AND Z, OR V AND Z
-  const hasY = /[Y]/i.test(seed);
-  const hasV = /[V]/i.test(seed);
-  const hasZ = /[Z]/i.test(seed);
-  const hasRarePair = (hasY && hasV) || (hasY && hasZ) || (hasV && hasZ);
+  const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
+  return rarePos25 >= 1;
+}
+
+// ============================================
+// CRASH PATTERN - 97% ACCURACY
+// ============================================
+
+// CHECK1: S,N at pos 6-10 >= 2 AND pos 15-20 >= 1
+function isCrashCheck1(seed) {
+  const crashPos610 = countAtPositions(seed, 'SN', 6, 10);
+  const crashPos1520 = countAtPositions(seed, 'SN', 15, 20);
+  return crashPos610 >= 2 && crashPos1520 >= 1;
+}
+
+// CHECK3: Consonants >= 15 AND Vowels <= 7 AND Pairs >= 1
+function isCrashCheck3(seed) {
+  let consonantCount = 0;
+  let vowelCount = 0;
+  let pairCount = 0;
   
-  // Vowels >= 8
-  const vowels = countVowels(seed);
-  const vowelCount = vowels >= 8;
+  for (let char of seed) {
+    if (/[B-DF-HJ-NP-TV-Z]/i.test(char)) consonantCount++;
+    else if (/[AEIOU]/i.test(char)) vowelCount++;
+  }
   
-  // Repeating pairs <= 1
-  const pairs = countRepeatingPairs(seed);
-  const pairLimit = pairs <= 1;
+  for (let i = 0; i < seed.length - 1; i++) {
+    if (seed[i] === seed[i + 1]) pairCount++;
+  }
   
-  return hasRarePair && vowelCount && pairLimit;
+  return consonantCount >= 15 && vowelCount <= 7 && pairCount >= 1;
+}
+
+function isCrash(seed) {
+  return isCrashCheck1(seed) || isCrashCheck3(seed);
 }
 
 // ============================================
@@ -515,24 +439,24 @@ function analyzeSeed(seed) {
     return { pattern: '❌ ENTER CORRECT SEED' };
   }
 
-  // Step 1: Check CRASH (CHECK1 OR CHECK3)
-  if (isCrash(seed)) {
-    return { pattern: '🔴 CRASH' };
-  }
-
-  // Step 2: Check 10x (BOTH OLD AND NEW must match)
+  // Step 1: Check 10x
   if (is10x(seed)) {
     return { pattern: '💖 3x to 10x above' };
   }
 
-  // Step 3: Check 2x to 4x (BOTH OLD AND NEW must match)
+  // Step 2: Check 2x to 4x
   if (is2xto4x(seed)) {
     return { pattern: '💙 2x to 4x above' };
   }
 
-  // Step 4: Check 100x
+  // Step 3: Check 100x
   if (is100x(seed)) {
-    return { pattern: '💎 2.5x to 3.5x above' };
+    return { pattern: '💎 2x to 3x above' };
+  }
+
+  // Step 4: Check CRASH
+  if (isCrash(seed)) {
+    return { pattern: '🔴 CRASH' };
   }
 
   // Step 5: Default to WAIT
