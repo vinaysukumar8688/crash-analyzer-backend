@@ -396,7 +396,7 @@ if (kzxPos610 >= 1 && kzxPos12Plus >= 2 && pos4xMatches >= 3) {
 // CHECK 2: Crash Detection Only (Count S/N >= 3)
 function isCrash(seed) {
   const totalSN = countCharacters(seed, 'SN');
-  return totalSN >= 3;
+  return totalSN >= 4;
 }
 
 function analyzeSeed(seed) {
