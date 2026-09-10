@@ -90,10 +90,55 @@ app.post('/api/user/validate-key', async (req, res) => {
         }
         const dbKey = result.rows[0];
         const now = Date.now();
+        
+        // ✅ CHECK IF KEY IS FROZEN FIRST (BEFORE checking expiry)
+        const isFrozen = !dbKey.login_time || dbKey.login_time === null || dbKey.login_time === 0;
+        
+        if (isFrozen) {
+            // 🔒 FROZEN KEY - Allow login regardless of expiry!
+            console.log('🔒 Frozen key detected - Activating now...');
+            
+            const originalDuration = dbKey.exp - dbKey.created_at;
+            const newExp = Date.now() + originalDuration;
+            
+            // Set login_time and new expiry
+            await pool.query(
+                'UPDATE keys SET exp = $1, login_time = $2 WHERE id = $3',
+                [newExp, Date.now(), dbKey.id]
+            );
+            console.log('✅ Frozen key activated! Timer started now');
+            
+            // Check if key already in use
+            const keyInUse = Object.keys(activeSessions).some(sid => {
+                return activeSessions[sid].key === key;
+            });
+            if (keyInUse) {
+                console.log('❌ Key already in use on another device');
+                return res.json({ valid: false, reason: 'Key already in use on another device' });
+            }
+            
+            // Create session
+            const sessionId = 'session_' + Math.random().toString(36).substring(7);
+            activeSessions[sessionId] = { key, timestamp: Date.now() };
+            console.log('✅ New session created:', sessionId);
+            
+            // Cleanup old sessions
+            Object.keys(activeSessions).forEach(sid => {
+                if (Date.now() - activeSessions[sid].timestamp > 1 * 60 * 1000) {
+                    delete activeSessions[sid];
+                }
+            });
+            
+            return res.json({ valid: true, reason: 'Frozen key activated!', exp: newExp, sessionId: sessionId });
+        }
+        
+        // ❌ KEY ALREADY USED - Check expiry
         if (now > dbKey.exp) {
             console.log('❌ Key expired');
             return res.json({ valid: false, reason: 'Key expired' });
         }
+        
+        // Check if key in use
         const keyInUse = Object.keys(activeSessions).some(sid => {
             return activeSessions[sid].key === key;
         });
@@ -101,30 +146,26 @@ app.post('/api/user/validate-key', async (req, res) => {
             console.log('❌ Key already in use on another device');
             return res.json({ valid: false, reason: 'Key already in use on another device' });
         }
-        let finalExp = dbKey.exp;
-        if (!dbKey.login_time) {
-            const originalDuration = dbKey.exp - dbKey.created_at;
-            finalExp = Date.now() + originalDuration;
-            await pool.query(
-                'UPDATE keys SET exp = $1, login_time = $2 WHERE id = $3',
-                [finalExp, Date.now(), dbKey.id]
-            );
-            console.log('✅ Key activated! Timer started from now');
-        }
+        
+        // Create session for active key
         const sessionId = 'session_' + Math.random().toString(36).substring(7);
         activeSessions[sessionId] = { key, timestamp: Date.now() };
-        console.log('✅ New session created:', sessionId);
+        console.log('✅ Session created for active key:', sessionId);
+        
+        // Cleanup old sessions
         Object.keys(activeSessions).forEach(sid => {
             if (Date.now() - activeSessions[sid].timestamp > 1 * 60 * 1000) {
                 delete activeSessions[sid];
             }
         });
-        return res.json({ valid: true, reason: 'Key is valid', exp: finalExp, sessionId: sessionId });
+        
+        return res.json({ valid: true, reason: 'Key is valid', exp: dbKey.exp, sessionId: sessionId });
     } catch (error) {
         console.error('❌ Validate key error:', error);
         return res.status(500).json({ valid: false, reason: 'Server error' });
     }
 });
+
 
 // ========================================
 // GET ALL KEYS ENDPOINT (ADMIN)
