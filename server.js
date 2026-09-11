@@ -542,7 +542,7 @@ function analyzeSeed(seed) {
 
   // PRIORITY 3: 100X (OLD patterns only)
   if (isOld100x(seed)) {
-    return { pattern: '💎 3x to 100x above' };
+    return { pattern: '💎 2x to 3x above' };
   }
 
   // PRIORITY 4: 4X (OLD OR NEW patterns)
