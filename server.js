@@ -485,17 +485,17 @@ function analyzeSeed(seed) {
 
   // PRIORITY 1: 10X
   if (isOld10x(seed) || isNew10x(seed)) {
-    return { pattern: '💖 3x to 10x above' };
+    return { pattern: '💖 3x to 10x abovee' };
   }
 
   // PRIORITY 2: 4X
   if (isOld4x(seed) || isNew4x(seed)) {
-    return { pattern: '💙 2x to 4x above' };
+    return { pattern: '💙 2x to 4x abovęe' };
   }
 
   // PRIORITY 3: 100X
   if (isOld100x(seed)) {
-    return { pattern: '💎 3x to 100x above' };
+    return { pattern: '💎 2x to 3x aboveę' };
   }
 
   // PRIORITY 4: CRASH
