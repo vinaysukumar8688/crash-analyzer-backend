@@ -665,8 +665,8 @@ app.post('/api/reseller/save-key', async (req, res) => {
         
         // Create key
         await pool.query(
-            'INSERT INTO keys (key_string, exp, active, created_at, created_by_reseller) VALUES ($1, $2, true, $3, $4)',
-            [key, exp, Date.now(), code]
+            'INSERT INTO keys (key_string, exp, active, created_at, created_by_reseller, login_time, reseller_code) VALUES ($1, $2, true, $3, $4, $5, $6)',
+            [key, exp, Date.now(), code, null, code]
         );
         
         // Deduct balance
