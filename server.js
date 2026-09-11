@@ -583,25 +583,39 @@ app.post('/api/admin/add-reseller-balance', async (req, res) => {
     }
 });
 
-// POST /api/admin/remove-reseller - Admin removes/deletes reseller
+// POST /api/admin/remove-reseller - Admin removes/deletes reseller AND all their keys
 app.post('/api/admin/remove-reseller', async (req, res) => {
     try {
         const { code } = req.body;
         if (!code) {
             return res.json({ success: false, reason: 'Missing code' });
         }
-        const result = await pool.query('DELETE FROM resellers WHERE code = $1', [code]);
+        
+        // STEP 1: Delete ALL keys created by this reseller
+        const keysDeleted = await pool.query(
+            'DELETE FROM keys WHERE created_by_reseller = $1',
+            [code]
+        );
+        console.log('🗑️ Deleted', keysDeleted.rowCount, 'keys from reseller:', code);
+        
+        // STEP 2: Delete the reseller
+        const result = await pool.query(
+            'DELETE FROM resellers WHERE code = $1',
+            [code]
+        );
+        
         if (result.rowCount === 0) {
             return res.json({ success: false, reason: 'Reseller not found' });
         }
-        console.log('✅ Reseller deleted:', code);
-        return res.json({ success: true });
+        
+        console.log('✅ Reseller deleted:', code, '+ All their keys');
+        return res.json({ success: true, keysDeleted: keysDeleted.rowCount });
+        
     } catch (error) {
         console.error('❌ Remove reseller error:', error);
         return res.json({ success: false, reason: error.message });
     }
 });
-
 // POST /api/reseller/login - Reseller login with code
 app.post('/api/reseller/login', async (req, res) => {
     try {
