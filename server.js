@@ -650,7 +650,6 @@ app.post('/api/reseller/save-key', async (req, res) => {
             return res.json({ success: false, reason: 'Missing required fields' });
         }
         
-        // Get reseller
         const resellerResult = await pool.query(
             'SELECT * FROM resellers WHERE code = $1 AND active = true',
             [code]
@@ -661,7 +660,7 @@ app.post('/api/reseller/save-key', async (req, res) => {
         
         const reseller = resellerResult.rows[0];
         if (reseller.balance < durationCost) {
-            return res.json({ success: false, reason: 'Insufficient balance. Need: ' + durationCost + ', Have: ' + reseller.balance });
+            return res.json({ success: false, reason: 'Insufficient balance' });
         }
         
         // Create key
@@ -677,8 +676,17 @@ app.post('/api/reseller/save-key', async (req, res) => {
         );
         
         const newBalance = updateResult.rows[0].balance;
+        
+        // CHECK: If balance < 150, flag for auto-logout ⚠️
+        const autoLogout = newBalance < 150;
+        
         console.log('✅ Key created by reseller:', code, 'New balance:', newBalance);
-        return res.json({ success: true, newBalance: newBalance });
+        return res.json({ 
+            success: true, 
+            newBalance: newBalance,
+            autoLogout: autoLogout,
+            message: autoLogout ? '⚠️ Balance too low! Logging out...' : ''
+        });
     } catch (error) {
         console.error('❌ Save key error:', error);
         return res.json({ success: false, reason: error.message });
