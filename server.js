@@ -492,16 +492,16 @@ function analyzeSeed(seed) {
 
   // Step 3: Check 100X (PRIORITY 3)
   if (is100x(seed)) {
-    return { pattern: '💎 3x to 100x above' };
+    return { pattern: '💎 2x to 3x above' };
   }
 
   // Step 4: Check CRASH (PRIORITY 4)
   if (isCrash(seed)) {
-    return { pattern: '🔴 CRASH' };
+    return { pattern: '🔴 CRASH 1 TO FEW ROUNDS' };
   }
 
   // Step 5: Default to WAIT
-  return { pattern: '⏳ WAIT' };
+  return { pattern: '⏳ WAIT FOR NEXT 3X ABOVE' };
 }
 
 // ========================================
