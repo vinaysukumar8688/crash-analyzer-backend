@@ -476,7 +476,7 @@ function isCrash(seed) {
 // ============================================
 
 function analyzeSeed(seed) {
-  if (!seed || seed.length < 40) {
+  if (!seed || seed.length !== 40) {
     return { pattern: '❌ ENTER CORRECT SEED' };
   }
 
@@ -510,7 +510,7 @@ function analyzeSeed(seed) {
 app.post('/api/user/analyze-seed', async (req, res) => {
     try {
         const { seed } = req.body;
-        if (!seed || seed.length < 40) {
+        if (!seed || seed.length !== 40) {
             return res.json({ pattern: '❌ ENTER CORRECT SEED' });
         }
         const analysis = analyzeSeed(seed);
