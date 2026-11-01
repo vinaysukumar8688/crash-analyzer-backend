@@ -370,109 +370,152 @@ app.get('/api/user/get-optimal-times', (req, res) => {
 });
 
 // ============================================
-// ============================================
-// FINAL SEED ANALYSIS - OLD PATTERNS ONLY
-// CORRECT ORDER: 10X > 4X > 100X > CRASH > WAIT
-// TESTED & CONFIRMED - 5/5 SEEDS CORRECT! ✅
+// SEED ANALYSIS - NEW TIPS
+// CRASH: 23 tips | 3X TO 10X ABOVE: 26 tips | 2X TO 4X ABOVE: 23 tips
+// If no tip matches: WAIT FOR NEXT 3X ABOVE
+// Positions are 1-based (position 1 = first character)
 // ============================================
 
-function countAtPositions(str, chars, startPos, endPos) {
-  let count = 0;
-  for (let i = startPos - 1; i < endPos && i < str.length; i++) {
-    if (chars.includes(str[i].toUpperCase())) {
-      count++;
-    }
+// Character at position (1-based) equals ch
+function at(s, pos, ch) {
+  return s.length >= pos && s[pos - 1] === ch;
+}
+
+// How many times ch appears in the seed
+function countOf(s, ch) {
+  let n = 0;
+  for (const c of s) if (c === ch) n++;
+  return n;
+}
+
+function charClass(c) {
+  if (/[A-Z]/.test(c)) return 'U';
+  if (/[a-z]/.test(c)) return 'L';
+  return 'D';
+}
+
+// Changes between uppercase / lowercase / digit, left to right
+function switches(s) {
+  let n = 0;
+  for (let i = 0; i < s.length - 1; i++) {
+    if (charClass(s[i]) !== charClass(s[i + 1])) n++;
   }
-  return count;
+  return n;
 }
 
-function countCharacters(str, chars) {
-  let count = 0;
-  for (let char of str) {
-    if (chars.includes(char.toUpperCase())) {
-      count++;
-    }
+function lowerCount(s) {
+  let n = 0;
+  for (const c of s) if (/[a-z]/.test(c)) n++;
+  return n;
+}
+
+function digitCount(s) {
+  let n = 0;
+  for (const c of s) if (/[0-9]/.test(c)) n++;
+  return n;
+}
+
+// Same character twice in a row
+function adjacentRepeats(s) {
+  let n = 0;
+  for (let i = 0; i < s.length - 1; i++) {
+    if (s[i] === s[i + 1]) n++;
   }
-  return count;
+  return n;
+}
+
+// ---------- CRASH (23 tips) ----------
+const CRASH_TIPS = [
+  s => at(s, 20, 'p'),
+  s => at(s, 37, 'O'),
+  s => countOf(s, '7') >= 3,
+  s => at(s, 16, '5'),
+  s => at(s, 22, 'w') && at(s, 1, 'e'),
+  s => at(s, 35, 'T') && at(s, 4, 't'),
+  s => at(s, 29, 'k') && at(s, 35, 'V'),
+  s => at(s, 20, 'A') && at(s, 10, 'H'),
+  s => at(s, 39, 'I') && at(s, 38, 'P'),
+  s => at(s, 1, 'g') && at(s, 3, 'e'),
+  s => at(s, 1, 'B') && countOf(s, 'G') >= 3,
+  s => at(s, 1, 'N') && at(s, 8, 'P'),
+  s => lowerCount(s) <= 15 && switches(s) >= 28,
+  s => at(s, 13, '1'),
+  s => at(s, 1, 'N'),
+  s => at(s, 4, 'q'),
+  s => switches(s) >= 31,
+  s => at(s, 21, '5'),
+  s => at(s, 5, 'P'),
+  s => at(s, 28, 'E'),
+  s => at(s, 5, 'Y'),
+  s => at(s, 4, '6'),
+  s => at(s, 31, 'i')
+];
+
+// ---------- 3X TO 10X ABOVE (26 tips) ----------
+const TEN_X_TIPS = [
+  s => at(s, 9, 'a'),
+  s => at(s, 13, 'w'),
+  s => at(s, 15, '3'),
+  s => at(s, 19, 's'),
+  s => at(s, 35, 'B'),
+  s => at(s, 40, 'l'),
+  s => at(s, 10, 'a'),
+  s => at(s, 14, 'S'),
+  s => at(s, 15, 'I'),
+  s => at(s, 34, '6'),
+  s => at(s, 13, 'O'),
+  s => at(s, 17, 'k'),
+  s => at(s, 18, '8'),
+  s => at(s, 39, 'a'),
+  s => at(s, 39, 'z'),
+  s => adjacentRepeats(s) >= 2,
+  s => countOf(s, 'k') >= 2,
+  s => lowerCount(s) >= 20 && lowerCount(s) <= 24,
+  s => switches(s) <= 26 && countOf(s, 'e') >= 2,
+  s => at(s, 10, '0'),
+  s => at(s, 30, 'Z'),
+  s => at(s, 1, 'j'),
+  s => at(s, 29, 'B'),
+  s => at(s, 18, 'O'),
+  s => at(s, 36, 'S'),
+  s => at(s, 4, 'V')
+];
+
+// ---------- 2X TO 4X ABOVE (23 tips) ----------
+const FOUR_X_TIPS = [
+  s => at(s, 20, 'W'),
+  s => at(s, 25, 'F'),
+  s => at(s, 2, 'l'),
+  s => at(s, 16, '2') && at(s, 17, 'l'),
+  s => at(s, 27, 'u') && at(s, 32, 'n'),
+  s => at(s, 2, 'C') && countOf(s, 'C') >= 3,
+  s => at(s, 32, 'R') && at(s, 29, '9'),
+  s => at(s, 4, '9') && at(s, 8, 'v'),
+  s => at(s, 11, 'T') && at(s, 20, 'a'),
+  s => at(s, 29, '5') && at(s, 5, 'n'),
+  s => at(s, 2, 'm') && at(s, 26, 'y'),
+  s => at(s, 23, 'V'),
+  s => digitCount(s) <= 4 && countOf(s, 'r') >= 2,
+  s => at(s, 12, '5'),
+  s => at(s, 11, 'L'),
+  s => at(s, 4, '9'),
+  s => at(s, 14, '5'),
+  s => at(s, 32, 'R'),
+  s => at(s, 1, 'G'),
+  s => at(s, 10, 'h'),
+  s => at(s, 27, 'u'),
+  s => at(s, 15, '1'),
+  s => at(s, 26, 'P')
+];
+
+function anyTip(tips, seed) {
+  return tips.some(t => t(seed));
 }
 
 // ============================================
-// 10X PATTERN - 92-95% ACCURACY
-// ============================================
-
-function is10x(seed) {
-  const vowelsPos510 = countAtPositions(seed, 'AEIOU', 5, 10);
-  const vowelsPos1825 = countAtPositions(seed, 'AEIOU', 18, 25);
-  const pos14Char = seed[13];
-  const isPos14Letter = /[A-Za-z]/.test(pos14Char);
-  
-  return vowelsPos510 >= 1 && vowelsPos1825 >= 1 && isPos14Letter;
-}
-
-// ============================================
-// 2X TO 4X PATTERN - 93-97% ACCURACY
-// ============================================
-
-function is2xto4x(seed) {
-  const kzxPos610 = countAtPositions(seed, 'KZX', 6, 10);
-  const kzxPos12Plus = countAtPositions(seed, 'KZX', 12, seed.length);
-  
-  let pos4xMatches = 0;
-  if (/[A-Z]/.test(seed[10])) pos4xMatches++;
-  if (/[A-Z]/.test(seed[19])) pos4xMatches++;
-  if (/[a-z]/.test(seed[22])) pos4xMatches++;
-  if (/[a-z]/.test(seed[24])) pos4xMatches++;
-  if (/[A-Z]/.test(seed[27])) pos4xMatches++;
-  if (/[a-z]/.test(seed[36])) pos4xMatches++;
-  
-  return kzxPos610 >= 1 && kzxPos12Plus >= 2 && pos4xMatches >= 3;
-}
-
-// ============================================
-// 100X PATTERN - 75-87% ACCURACY
-// ============================================
-
-function is100x(seed) {
-  const rarePos25 = countAtPositions(seed, 'YVZ', 2, 5);
-  return rarePos25 >= 1;
-}
-
-// ============================================
-// CRASH PATTERN - 97% ACCURACY
-// ============================================
-
-// CHECK1: S,N at pos 6-10 >= 2 AND pos 15-20 >= 1
-function isCrashCheck1(seed) {
-  const crashPos610 = countAtPositions(seed, 'SN', 6, 10);
-  const crashPos1520 = countAtPositions(seed, 'SN', 15, 20);
-  return crashPos610 >= 2 && crashPos1520 >= 1;
-}
-
-// CHECK3: Consonants >= 15 AND Vowels <= 7 AND Pairs >= 1
-function isCrashCheck3(seed) {
-  let consonantCount = 0;
-  let vowelCount = 0;
-  let pairCount = 0;
-  
-  for (let char of seed) {
-    if (/[B-DF-HJ-NP-TV-Z]/i.test(char)) consonantCount++;
-    else if (/[AEIOU]/i.test(char)) vowelCount++;
-  }
-  
-  for (let i = 0; i < seed.length - 1; i++) {
-    if (seed[i] === seed[i + 1]) pairCount++;
-  }
-  
-  return consonantCount >= 15 && vowelCount <= 7 && pairCount >= 1;
-}
-
-function isCrash(seed) {
-  return isCrashCheck1(seed) || isCrashCheck3(seed);
-}
-
-// ============================================
-// MAIN ANALYSIS FUNCTION - PRIORITY ORDER
-// ORDER: 10X > 4X > 100X > CRASH > WAIT
+// MAIN ANALYSIS FUNCTION
+// ORDER: 2X TO 4X > CRASH > 3X TO 10X > WAIT
+// (3X TO 10X tips are the broadest, so they are checked last)
 // ============================================
 
 function analyzeSeed(seed) {
@@ -480,29 +523,21 @@ function analyzeSeed(seed) {
     return { pattern: '❌ ENTER CORRECT SEED' };
   }
 
-  // Step 1: Check 10X (PRIORITY 1)
-  if (is10x(seed)) {
-    return { pattern: '💖 3x to 10x above' };
-  }
-
-  // Step 2: Check 4X (PRIORITY 2)
-  if (is2xto4x(seed)) {
+  if (anyTip(FOUR_X_TIPS, seed)) {
     return { pattern: '💙 2x to 4x above' };
   }
 
-  // Step 3: Check 100X (PRIORITY 3)
-  if (is100x(seed)) {
-    return { pattern: '💎 2x to 3x above' };
-  }
-
-  // Step 4: Check CRASH (PRIORITY 4)
-  if (isCrash(seed)) {
+  if (anyTip(CRASH_TIPS, seed)) {
     return { pattern: '🔴 CRASH 1 TO FEW ROUNDS' };
   }
 
-  // Step 5: Default to WAIT
+  if (anyTip(TEN_X_TIPS, seed)) {
+    return { pattern: '💖 3x to 10x above' };
+  }
+
   return { pattern: '⏳ WAIT FOR NEXT 3X ABOVE' };
 }
+
 
 // ========================================
 // ANALYZE SEED ENDPOINT
